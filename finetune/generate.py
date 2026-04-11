@@ -1,0 +1,1 @@
+"""Skeleton generation via Opus."""

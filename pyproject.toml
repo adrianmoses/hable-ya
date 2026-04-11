@@ -1,0 +1,38 @@
+[project]
+name = "hable-ya"
+version = "0.1.0"
+description = "Voice-only adaptive Spanish tutor powered by Gemma 4 and Pipecat"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pipecat-ai[daily]",
+    "fastapi",
+    "uvicorn[standard]",
+    "websockets",
+    "pydantic-settings",
+    "aiosqlite",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+]
+eval = [
+    "anthropic",
+]
+finetune = [
+    "anthropic",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

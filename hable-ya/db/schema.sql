@@ -1,0 +1,1 @@
+-- Canonical schema for hable-ya
