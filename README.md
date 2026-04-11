@@ -141,6 +141,8 @@ error_repeated > 0.05       → fine-tune immediately
 
 Per-band breakdown:
 
+```
+
 # A model that scores 0.75 overall might look like this:
 
 by_band = {
@@ -153,17 +155,20 @@ by_band = {
 
 # The overall 0.75 looks ok but A1 is genuinely broken.
 # Fine-tuning dataset needs heavy A1/A2 weighting.
+```
 
 
 
 Cold start thresholds:
 
+```
 band_accuracy < 0.75        → fine-tune cold start examples
 MAE > 0.20                  → fine-tune cold start examples
 
 These thresholds matter because a bad cold start poisons
 the entire learner profile — every subsequent session
 runs at the wrong level.
+```
 
 
 #### Fine-tuning datasets

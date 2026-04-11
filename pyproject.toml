@@ -1,38 +1,86 @@
 [project]
 name = "hable-ya"
 version = "0.1.0"
-description = "Voice-only adaptive Spanish tutor powered by Gemma 4 and Pipecat"
-readme = "README.md"
+description = "On-device Spanish language acquisition voice agent"
 requires-python = ">=3.12"
 dependencies = [
-    "pipecat-ai[daily]",
-    "fastapi",
-    "uvicorn[standard]",
-    "websockets",
-    "pydantic-settings",
-    "aiosqlite",
-    "httpx",
+    # API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=13.0",
+
+    # Pipecat
+    "pipecat-ai[silero,daily]>=0.0.103",
+
+    # STT / TTS
+    "faster-whisper>=1.0.0",
+    "piper-tts>=1.2.0",
+
+    # LLM client
+    "openai>=1.50.0",               # OpenAI-compatible llama.cpp endpoint
+
+    # DB
+    "aiosqlite>=0.20.0",
+
+    # Config
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+
+    # Utilities
+    "langdetect>=1.0.9",
+    "tenacity>=9.0.0",              # retries for tool calls
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-asyncio",
-    "ruff",
-]
 eval = [
-    "anthropic",
+    "anthropic>=0.40.0",           # Opus for synthetic learner + judge
+    "rich>=13.0.0",                # pretty eval output
+    "pandas>=2.0.0",               # results aggregation
 ]
 finetune = [
-    "anthropic",
+    "anthropic>=0.40.0",           # Opus for skeleton generation
+    "datasets>=3.0.0",             # HuggingFace datasets
+    "trl>=0.12.0",                 # SFT / DPO training
+    "peft>=0.14.0",                # LoRA
+    "transformers>=4.47.0",
+    "torch>=2.5.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "rich>=13.0.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "rich>=13.0.0",
+]
+
 [tool.ruff]
-line-length = 100
+target-version = "py312"
+line-length = 88
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["hable-ya", "api"]
