@@ -275,7 +275,7 @@ Tool calls can be in a focused set
 Use band and category distribution to influence the training examples. Target 3k-4k training examples
 
 
-Exmaple order of example generation
+Example order of example generation
 
 ```
 Step 1 → 200 examples across all categories and bands
@@ -293,5 +293,60 @@ Step 4 → If DPO needed, generate contrast pairs
           from fixture negatives + worst SFT failures
           Run DPO fine-tune on top of SFT checkpoint
 ```
+
+
+#### Scripts
+
+**Download Gemma 4 E4B model**
+
+```bash
+# Both GGUF (for llama.cpp) and HF weights (for fine-tuning)
+python scripts/download_model.py
+
+# GGUF only (lands at models/gemma-4-e4b.gguf)
+python scripts/download_model.py --gguf-only
+
+# HF weights only (lands at models/gemma-4-e4b-hf/)
+python scripts/download_model.py --hf-only
+
+# Re-download even if files exist
+python scripts/download_model.py --force
+```
+
+Requires HuggingFace authentication (Gemma is gated). Set `HF_TOKEN` env var or run `huggingface-cli login`.
+
+**Generate eval fixtures**
+
+```bash
+# Full pipeline: generate → validate → review → consolidate
+python scripts/generate_eval_fixtures.py all
+
+# Individual stages
+python scripts/generate_eval_fixtures.py generate
+python scripts/generate_eval_fixtures.py validate
+python scripts/generate_eval_fixtures.py review
+python scripts/generate_eval_fixtures.py consolidate
+```
+
+**Generate fine-tuning datasets**
+
+```bash
+# Consolidate fixtures then generate both SFT and DPO datasets
+python -m finetune.generate
+
+# SFT only
+python -m finetune.generate --format sft
+
+# DPO only
+python -m finetune.generate --format dpo
+
+# Skip consolidation (if already done)
+python -m finetune.generate --no-consolidate
+
+# Validate generated datasets
+python -m finetune.validate
+```
+
+Outputs JSONL files to `finetune/datasets/`.
 
 
