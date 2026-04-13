@@ -216,3 +216,9 @@ __marimo__/
 .streamlit/secrets.toml
 
 *.gguf
+
+# Fixture generation staging directories
+eval/fixtures/_pending/
+eval/fixtures/_approved/
+eval/fixtures/_rejected/
+eval/fixtures/_review_state.json
