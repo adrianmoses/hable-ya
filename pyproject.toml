@@ -40,10 +40,10 @@ eval = [
 finetune = [
     "anthropic>=0.40.0",           # Opus for skeleton generation
     "datasets>=3.0.0",             # HuggingFace datasets
-    "trl>=0.12.0",                 # SFT / DPO training
-    "peft>=0.14.0",                # LoRA
+    "unsloth",                     # SFT / DPO training (replaces trl + peft)
     "transformers>=4.47.0",
     "torch>=2.5.0",
+    "huggingface_hub>=0.25.0",     # model downloads
 ]
 dev = [
     "pytest>=8.0.0",

@@ -3,15 +3,53 @@ from __future__ import annotations
 
 import argparse
 import json
+import types
 from pathlib import Path
+from typing import get_args, get_origin
 
-from eval.fixtures.schema import CATEGORY_FILES, load_fixtures, parse_fixture
+from pydantic import BaseModel
+
+from eval.fixtures.schema import (
+    CATEGORY_FILES,
+    ColdStartFixture,
+    Fixture,
+    load_fixtures,
+    parse_fixture,
+)
 
 from .prompts import TARGET_COUNTS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES_ROOT = REPO_ROOT / "eval" / "fixtures"
 APPROVED_ROOT = FIXTURES_ROOT / "_approved"
+
+
+def _strip_to_model(data: object, model_cls: type[BaseModel]) -> object:
+    """Recursively drop keys not declared in *model_cls*."""
+    if not isinstance(data, dict):
+        return data
+    result: dict = {}
+    for name, field in model_cls.model_fields.items():
+        if name not in data:
+            continue
+        value = data[name]
+        ann = field.annotation
+        # Unwrap Optional (Union[X, None])
+        if isinstance(ann, types.UnionType):
+            args = [a for a in get_args(ann) if a is not type(None)]
+            if len(args) == 1:
+                ann = args[0]
+        if isinstance(ann, type) and issubclass(ann, BaseModel):
+            result[name] = _strip_to_model(value, ann)
+        elif get_origin(ann) is list and isinstance(value, list):
+            inner = get_args(ann)
+            if inner and isinstance(inner[0], type) and issubclass(inner[0], BaseModel):
+                result[name] = [_strip_to_model(item, inner[0]) for item in value]
+            else:
+                result[name] = value
+        else:
+            result[name] = value
+    return result
 
 
 def _collect(category: str) -> list[dict]:
@@ -21,6 +59,8 @@ def _collect(category: str) -> list[dict]:
     out: list[dict] = []
     for f in sorted(cat_dir.glob("*.json")):
         data = json.loads(f.read_text())
+        model_cls = ColdStartFixture if data.get("type") == "cold_start_sequence" else Fixture
+        data = _strip_to_model(data, model_cls)
         parse_fixture(data)  # validates
         out.append(data)
     return out
