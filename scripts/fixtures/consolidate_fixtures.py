@@ -77,7 +77,6 @@ def main() -> int:
 
     rows: list[tuple[str, int, int, str]] = []
     short = False
-    over = False
 
     for category in CATEGORY_FILES:
         fixtures = _collect(category)
@@ -88,8 +87,10 @@ def main() -> int:
             status = "short"
             short = True
         elif len(fixtures) > target:
-            status = "OVER"
-            over = True
+            # Over target is fine — it's bonus data, not a problem. The
+            # prompt-engineered categories (l1_handling, register_boundary, ...)
+            # intentionally have small TARGET_COUNTS and will stay above them.
+            status = "over (ok)"
         rows.append((category, len(fixtures), target, status))
 
         out_file = FIXTURES_ROOT / f"{category}.json"
@@ -102,8 +103,6 @@ def main() -> int:
     loaded = load_fixtures(FIXTURES_ROOT)
     print(f"\nload_fixtures() validated {len(loaded)} fixtures across all files")
 
-    if over:
-        return 1
     if short and args.strict:
         return 1
     return 0

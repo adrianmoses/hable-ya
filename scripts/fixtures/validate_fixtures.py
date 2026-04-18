@@ -13,6 +13,24 @@ from pathlib import Path
 
 from eval.fixtures.schema import ColdStartFixture, Fixture, parse_fixture
 
+from .prompts import ALL_ERROR_TYPES
+
+_ALL_ERROR_TYPES_SET = set(ALL_ERROR_TYPES)
+_FORBIDDEN_ERROR_KEYS = ("errors_observed", "errors_detected")
+
+
+def _produced_form_leaks(produced: str, response: str) -> bool:
+    """Check whether the learner's wrong form appears verbatim in the response.
+
+    Uses Unicode-aware word boundaries (\\b) to avoid false positives where
+    `produced` is a substring of a longer Spanish word — e.g., produced="es"
+    must not match inside "está", "estás", "estamos". Word boundaries also
+    work for multi-word produced forms ("es cerca", "el casa rojo") because
+    the boundary is anchored at the outer ends of the phrase.
+    """
+    pattern = r"\b" + re.escape(produced) + r"\b"
+    return re.search(pattern, response, re.IGNORECASE | re.UNICODE) is not None
+
 EXPLICIT_CORRECTION_PATTERNS = [
     r"pero\s+es\b",
     r"se\s+dice\b",
@@ -80,6 +98,14 @@ def universal_checks(fixture: Fixture) -> list[str]:
     if log_turn is None:
         errs.append("log_turn not present in expected.tool_calls")
 
+    if log_turn:
+        for forbidden in _FORBIDDEN_ERROR_KEYS:
+            if forbidden in log_turn:
+                errs.append(
+                    f"log_turn uses non-canonical key '{forbidden}'; "
+                    "use 'errors' instead"
+                )
+
     if fixture.metadata.errors_present:
         recast = fixture.metadata.expected_recast or fixture.expected.recast_form
         if not recast:
@@ -87,11 +113,27 @@ def universal_checks(fixture: Fixture) -> list[str]:
         elif recast not in response:
             errs.append(f"expected_recast '{recast}' not in response_text")
 
-        if log_turn and "errors_observed" in log_turn:
-            for eo in log_turn["errors_observed"]:
-                bad = eo.get("example", "")
-                if bad and bad in response:
-                    errs.append(f"error form '{bad}' appears in response_text")
+        if log_turn and isinstance(log_turn.get("errors"), list):
+            for idx, err in enumerate(log_turn["errors"]):
+                if not isinstance(err, dict):
+                    errs.append(f"errors[{idx}] is not an object")
+                    continue
+                err_type = err.get("type", "")
+                produced = err.get("produced", "")
+                target = err.get("target", "")
+                if err_type not in _ALL_ERROR_TYPES_SET:
+                    errs.append(
+                        f"errors[{idx}].type='{err_type}' is not a canonical "
+                        f"type (must be one of {sorted(_ALL_ERROR_TYPES_SET)})"
+                    )
+                if not produced:
+                    errs.append(f"errors[{idx}].produced is empty")
+                if not target:
+                    errs.append(f"errors[{idx}].target is empty")
+                if produced and _produced_form_leaks(produced, response):
+                    errs.append(
+                        f"error form '{produced}' appears in response_text"
+                    )
 
     if _is_english(response) and not fixture.metadata.L1_used:
         errs.append("response_text detected as English")
@@ -106,11 +148,10 @@ def _check_multi_error(fixture: Fixture) -> list[str]:
     if not fixture.expected.priority_error:
         errs.append("expected.priority_error required for multi_error")
     log_turn = _log_turn(fixture) or {}
-    print(log_turn)
-    observed = {e.get("type") for e in log_turn.get("errors_observed", [])}
+    observed = {e.get("type") for e in log_turn.get("errors", [])}
     missing = set(fixture.metadata.errors_present) - observed
     if missing:
-        errs.append(f"log_turn.errors_observed missing types: {sorted(missing)}")
+        errs.append(f"log_turn.errors missing types: {sorted(missing)}")
     return errs
 
 

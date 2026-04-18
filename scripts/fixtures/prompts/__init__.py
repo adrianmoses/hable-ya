@@ -41,14 +41,23 @@ CATEGORIES: dict[str, BuildPrompts] = {
     "error_pattern_threshold": error_pattern_threshold.build_user_prompts,
 }
 
-# Spec §"Target counts". cold_start B1 column is 4 per band in the text.
+# Targets are bumped only for the three categories that exercise the two
+# remaining-weak eval metrics (recast_present, tool_args_correct). The other
+# categories stay at their original small counts because their metrics already
+# pass under prompt engineering — no fine-tune signal to scale toward.
+#
+# Failure-weighted distribution: A1 had 25/83 tool_args failures, C1 had 24/80
+# recast_present failures — both bands get extra weight in single_error_recast.
 TARGET_COUNTS: dict[str, dict[CEFRBand, int]] = {
-    "single_error_recast":   {"A1": 10, "A2": 10, "B1": 10, "B2": 10, "C1": 10},
-    "multi_error":           {"A1": 6,  "A2": 6,  "B1": 6,  "B2": 6,  "C1": 6},
+    # Fine-tune targets — scaled.
+    "single_error_recast":   {"A1": 150, "A2": 120, "B1": 100, "B2": 100, "C1": 150},
+    "multi_error":           {"A1": 60,  "A2": 60,  "B1": 60,  "B2": 60,  "C1": 60},
+    "tool_call_correctness": {"A1": 40,  "A2": 30,  "B1": 30,  "B2": 30,  "C1": 30},
+    # Prompt-engineering territory — left at original small counts (current
+    # eval metrics already pass for these). Scale only if a regression appears.
     "l1_handling":           {"A1": 5,  "A2": 5,  "B1": 5,  "B2": 5,  "C1": 5},
     "mimicry_cycle":         {"A1": 15},
     "cold_start":            {"A1": 4,  "A2": 4,  "B1": 4,  "B2": 4,  "C1": 4},
     "register_boundary":     {"A1": 4,  "A2": 4,  "B1": 4,  "B2": 4,  "C1": 4},
-    "tool_call_correctness": {"A1": 4,  "A2": 4,  "B1": 4,  "B2": 4,  "C1": 4},
     "error_pattern_threshold": {"A1": 4, "A2": 4, "B1": 4, "B2": 4, "C1": 4},
 }

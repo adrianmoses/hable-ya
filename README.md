@@ -349,4 +349,32 @@ python -m finetune.validate
 
 Outputs JSONL files to `finetune/datasets/`.
 
+**Run model eval**
+
+Requires llama.cpp server running (e.g. `docker compose up llama`).
+
+```bash
+# Run eval against all fixtures
+python -m eval.run_eval --base-url http://localhost:8080 --output results.json
+
+# Run eval against specific categories
+python -m eval.run_eval --base-url http://localhost:8080 --output results.json \
+    --categories single_error_recast,multi_error
+
+# Adjust concurrency and timeout
+python -m eval.run_eval --base-url http://localhost:8080 --output results.json \
+    --concurrency 8 --timeout 60
+```
+
+Outputs a JSON file with per-fixture scores and aggregates by dimension, CEFR band, and category.
+
+**Compare eval runs**
+
+```bash
+# Compare base model vs fine-tuned
+python -m eval.compare baseline.json finetuned.json
+```
+
+Prints rich tables showing per-dimension and per-band deltas with threshold recommendations from the spec.
+
 

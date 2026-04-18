@@ -133,7 +133,7 @@ def validate_dpo(path: Path) -> int:
             print(f"{prefix} rejected is not assistant role")
             errors += 1
 
-        # Chosen should have tool call, rejected should not
+        # Chosen must always have a tool call
         if "chosen" in rec:
             content = rec["chosen"].get("content", "")
             if not TOOL_CALL_RE.search(content):

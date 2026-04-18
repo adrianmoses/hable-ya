@@ -8,27 +8,22 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "websockets>=13.0",
-
     # Pipecat
     "pipecat-ai[silero,daily]>=0.0.103",
-
     # STT / TTS
     "faster-whisper>=1.0.0",
     "piper-tts>=1.2.0",
-
     # LLM client
     "openai>=1.50.0",               # OpenAI-compatible llama.cpp endpoint
-
     # DB
     "aiosqlite>=0.20.0",
-
     # Config
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
-
     # Utilities
     "langdetect>=1.0.9",
     "tenacity>=9.0.0",              # retries for tool calls
+    "jupyterlab>=4.5.6",
 ]
 
 [project.optional-dependencies]
@@ -58,8 +53,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
