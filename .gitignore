@@ -235,3 +235,16 @@ eval/fixtures/error_pattern_threshold.json
 
 # Generated fine-tuning datasets
 finetune/datasets/*.jsonl
+
+unsloth_compiled_cache/
+unsloth_training_checkpoints/
+notebooks/adrianmoses/
+notebooks/trainer_output/
+notebooks/.ipynb_checkpoints/
+
+baseline.json
+finetuned.json
+models/
+baseline_v2.json
+finetuned_v2.json
+

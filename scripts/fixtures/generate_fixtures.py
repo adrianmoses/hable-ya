@@ -29,7 +29,10 @@ from .validate_fixtures import validate_one
 MODEL = "claude-opus-4-5"
 MAX_TOKENS = 4096
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PENDING_ROOT = REPO_ROOT / "eval" / "fixtures" / "_pending"
+FIXTURES_ROOT = REPO_ROOT / "eval" / "fixtures"
+PENDING_ROOT = FIXTURES_ROOT / "_pending"
+APPROVED_ROOT = FIXTURES_ROOT / "_approved"
+REJECTED_ROOT = FIXTURES_ROOT / "_rejected"
 
 
 @dataclass
@@ -44,6 +47,7 @@ def _build_requests(
     categories: list[str],
     bands: list[CEFRBand] | None,
     multiplier: float,
+    max_per_cell: int | None = None,
 ) -> list[BatchRequest]:
     requests: list[BatchRequest] = []
     for cat in categories:
@@ -55,6 +59,8 @@ def _build_requests(
             n = max(1, math.ceil(target * multiplier))
             existing = _count_existing(cat, band)
             remaining = max(0, n - existing)
+            if max_per_cell is not None:
+                remaining = min(remaining, max_per_cell)
             if remaining == 0:
                 continue
             for i, prompt in enumerate(builder(remaining, band)):
@@ -70,11 +76,22 @@ def _build_requests(
 
 
 def _count_existing(category: str, band: CEFRBand) -> int:
-    cat_dir = PENDING_ROOT / category
-    if not cat_dir.exists():
-        return 0
+    """Count fixtures already named ``{category}_{band}_*`` across every staging dir.
+
+    This drives the seq number for newly generated fixtures. Counting only
+    `_pending/` (the historical bug) made fresh runs restart at seq 001 and
+    silently overwrite same-named fixtures already moved to `_approved/` or
+    `_rejected/` via shutil.move. Sum across all three so seq numbers always
+    advance.
+    """
     pattern = re.compile(rf"^{re.escape(category)}_{band}_")
-    return sum(1 for f in cat_dir.glob("*.json") if pattern.match(f.name))
+    total = 0
+    for root in (PENDING_ROOT, APPROVED_ROOT, REJECTED_ROOT):
+        cat_dir = root / category
+        if not cat_dir.exists():
+            continue
+        total += sum(1 for f in cat_dir.glob("*.json") if pattern.match(f.name))
+    return total
 
 
 def _request_payload(req: BatchRequest) -> dict[str, Any]:
@@ -201,6 +218,7 @@ def _process_results(
 
         seq_counters[key] += 1
         seq = seq_counters[key]
+        fixture_path: Path | None = None
         try:
             fixture_path = _write_fixture(
                 req.category, req.band, data, _slug(req.user_prompt), seq
@@ -212,6 +230,12 @@ def _process_results(
             entry["detail"] = str(exc)[:500]
             manifest.setdefault(req.category, []).append(entry)
             rejected += 1
+            # Clean up the broken file and reclaim the seq number so the next
+            # attempt reuses it. Without this, the file leaks into _pending/
+            # and gets rejected a second time by auto-approve, double-counting.
+            if fixture_path is not None and fixture_path.exists():
+                fixture_path.unlink()
+            seq_counters[key] -= 1
             print(f"  ✗ {req.custom_id}: schema error {exc}")
             continue
 
@@ -256,14 +280,27 @@ def main() -> int:
         default=1.2,
         help="oversample ratio vs target counts (default 1.2)",
     )
+    parser.add_argument(
+        "--max-per-cell",
+        type=int,
+        default=None,
+        metavar="N",
+        help="cap new fixtures per (category, band) cell at N. Use for cheap "
+        "pre-flight runs (e.g. --max-per-cell 3 generates ≤3 per cell, ~$1-2 "
+        "across the full target categories) before committing to scale.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--poll-seconds", type=int, default=30)
     args = parser.parse_args()
 
     load_dotenv()
 
-    requests = _build_requests(args.categories, args.bands, args.count_multiplier)
+    requests = _build_requests(
+        args.categories, args.bands, args.count_multiplier, args.max_per_cell
+    )
     print(f"Planned {len(requests)} generation requests")
+    if args.max_per_cell is not None:
+        print(f"  (capped to ≤{args.max_per_cell} per (category, band) cell)")
     if not requests:
         return 0
 

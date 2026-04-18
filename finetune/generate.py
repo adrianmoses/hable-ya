@@ -1,22 +1,56 @@
-"""Generate SFT / DPO training datasets from consolidated eval fixtures.
+"""Generate the SFT training dataset from consolidated eval fixtures.
 
 Usage::
 
-    python -m finetune.generate                  # consolidate + both formats
-    python -m finetune.generate --format sft     # SFT only
+    python -m finetune.generate                  # consolidate + write SFT
     python -m finetune.generate --no-consolidate # skip consolidation step
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 
 from eval.fixtures.schema import Fixture, load_fixtures
-from finetune.format import fixture_to_dpo, fixture_to_sft
+from finetune.format import _extract_category, fixture_to_sft
+
+# Only these three categories exercise the two failing eval metrics
+# (recast_present, tool_args_correct). The others live under prompt
+# engineering — including them here trains the model on behaviors that
+# already pass and dilutes the signal on what we actually want to fix.
+FINETUNE_CATEGORIES: set[str] = {
+    "single_error_recast",
+    "multi_error",
+    "tool_call_correctness",
+}
+
+_TOOL_CALL_RE = re.compile(r"\[TOOL_CALL: log_turn\]\s*(\{.*)", re.DOTALL)
+
+
+def _has_empty_error_field(rec: dict) -> bool:
+    """Return True if the SFT record's log_turn.errors has any entry with an
+    empty produced or target field. These records teach the wrong pattern for
+    tool_args_correct and should be filtered in --strict mode."""
+    asst = rec["messages"][-1]
+    m = _TOOL_CALL_RE.search(asst["content"])
+    if not m:
+        return False
+    try:
+        args, _ = json.JSONDecoder().raw_decode(m.group(1))
+    except json.JSONDecodeError:
+        return False
+    errors = args.get("errors", [])
+    if not errors:
+        return False
+    return any(
+        not e.get("produced") or not e.get("target")
+        for e in errors
+        if isinstance(e, dict)
+    )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = REPO_ROOT / "eval" / "fixtures"
@@ -30,6 +64,7 @@ def _consolidate() -> int:
         [sys.executable, str(REPO_ROOT / "scripts" / "generate_eval_fixtures.py"), "consolidate"],
         cwd=str(REPO_ROOT),
     )
+    print(result.returncode)
     return result.returncode
 
 
@@ -43,12 +78,6 @@ def _write_jsonl(path: Path, records: list[dict]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--format",
-        choices=["sft", "dpo", "both"],
-        default="both",
-        help="Which dataset format(s) to generate (default: both)",
-    )
-    parser.add_argument(
         "--no-consolidate",
         action="store_true",
         help="Skip fixture consolidation (assumes already done)",
@@ -58,6 +87,21 @@ def main() -> int:
         type=Path,
         default=DATASETS_DIR,
         help=f"Output directory (default: {DATASETS_DIR})",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Skip fixtures whose log_turn.errors contain any entry with empty "
+        "produced/target. These are legacy-data residuals that would teach "
+        "the wrong pattern for tool_args_correct.",
+    )
+    parser.add_argument(
+        "--include-all-categories",
+        action="store_true",
+        help="Include every fixture category, not just the fine-tune targets "
+        "(single_error_recast, multi_error, tool_call_correctness). Use only "
+        "if you explicitly want non-training-relevant categories in the SFT "
+        "pool — by default they're filtered out.",
     )
     args = parser.parse_args()
 
@@ -72,41 +116,48 @@ def main() -> int:
     # Step 2: load fixtures
     fixtures = load_fixtures(FIXTURES_ROOT)
     standard = [f for f in fixtures if isinstance(f, Fixture)]
-    skipped = len(fixtures) - len(standard)
+    cold_skipped = len(fixtures) - len(standard)
 
-    print(f"Loaded {len(fixtures)} fixtures ({len(standard)} standard, {skipped} cold_start skipped)")
+    if args.include_all_categories:
+        eligible = standard
+        cat_skipped = 0
+    else:
+        eligible = [f for f in standard if _extract_category(f.id) in FINETUNE_CATEGORIES]
+        cat_skipped = len(standard) - len(eligible)
 
-    if not standard:
-        print("No standard fixtures to convert.", file=sys.stderr)
+    print(
+        f"Loaded {len(fixtures)} fixtures "
+        f"({len(standard)} standard, {cold_skipped} cold_start skipped, "
+        f"{cat_skipped} non-finetune-category skipped)"
+    )
+
+    if not eligible:
+        print("No eligible fixtures to convert.", file=sys.stderr)
         return 1
 
     # Step 3: convert
     sft_records: list[dict] = []
-    dpo_records: list[dict] = []
-    band_counts: Counter[str] = Counter()
-
-    for fixture in standard:
-        band_counts[fixture.metadata.cefr_band] += 1
-
-        if args.format in ("sft", "both"):
-            sft_records.append(fixture_to_sft(fixture))
-
-        if args.format in ("dpo", "both"):
-            dpo_records.extend(fixture_to_dpo(fixture))
+    dropped_strict = 0
+    for f in eligible:
+        rec = fixture_to_sft(f)
+        if args.strict and _has_empty_error_field(rec):
+            dropped_strict += 1
+            continue
+        sft_records.append(rec)
+    band_counts: Counter[str] = Counter(f.metadata.cefr_band for f in eligible)
+    cat_counts: Counter[str] = Counter(_extract_category(f.id) for f in eligible)
 
     # Step 4: write
-    if sft_records:
-        sft_path = args.output_dir / "sft_train.jsonl"
-        _write_jsonl(sft_path, sft_records)
-        print(f"Wrote {len(sft_records)} SFT examples → {sft_path}")
+    sft_path = args.output_dir / "sft_train.jsonl"
+    _write_jsonl(sft_path, sft_records)
+    print(f"Wrote {len(sft_records)} SFT examples → {sft_path}")
+    if args.strict:
+        print(f"  (strict mode: dropped {dropped_strict} records with empty produced/target)")
+    print("\nCategory distribution:")
+    for cat, n in sorted(cat_counts.items(), key=lambda x: -x[1]):
+        print(f"  {cat:28s} {n}")
 
-    if dpo_records:
-        dpo_path = args.output_dir / "dpo_train.jsonl"
-        _write_jsonl(dpo_path, dpo_records)
-        print(f"Wrote {len(dpo_records)} DPO pairs → {dpo_path}")
-
-    # Summary
-    print(f"\nCEFR distribution:")
+    print("\nCEFR distribution:")
     for band in ["A1", "A2", "B1", "B2", "C1"]:
         print(f"  {band}: {band_counts.get(band, 0)}")
 

@@ -40,6 +40,10 @@ def main() -> int:
     sub.add_parser("all", help="generate → validate → review → consolidate").set_defaults(
         forward=None
     )
+    sub.add_parser(
+        "auto",
+        help="generate → auto-approve (no TUI) → consolidate",
+    ).set_defaults(forward=None)
 
     args, rest = parser.parse_known_args()
     sys.argv = [sys.argv[0], *rest]
@@ -55,6 +59,18 @@ def main() -> int:
             if rc:
                 return rc
         return 0
+
+    if args.cmd == "auto":
+        # generate first — consumes the user's --categories / --bands / etc.
+        if (rc := generate_fixtures.main()) != 0:
+            return rc
+        # auto-approve takes only its own flag
+        sys.argv = [sys.argv[0], "--auto-approve"]
+        if (rc := review_fixtures.main()) != 0:
+            return rc
+        # consolidate takes no args
+        sys.argv = [sys.argv[0]]
+        return consolidate_fixtures.main()
 
     return args.forward()
 

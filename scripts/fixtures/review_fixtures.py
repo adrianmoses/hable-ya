@@ -57,6 +57,11 @@ def _move(src: Path, dest_root: Path, category: str) -> Path:
     dest_dir = dest_root / category
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / src.name
+    if dest.exists():
+        raise FileExistsError(
+            f"refusing to overwrite {dest} — seq collision indicates a bug "
+            "in _count_existing or duplicate fixture IDs"
+        )
     shutil.move(str(src), dest)
     return dest
 
@@ -164,10 +169,69 @@ def non_interactive() -> int:
     return 0 if bad == 0 else 1
 
 
+def auto_approve() -> int:
+    """Move every validator-passing pending fixture to _approved/, the rest to _rejected/.
+
+    Bypasses the TUI for scale generation. Each rejected fixture gets a sibling
+    ``<id>.reason.json`` with the validator errors and (if available) the
+    schema/parse exception. Resumable via the same ``_review_state.json`` the
+    interactive loop uses, so a crash mid-run doesn't reprocess work.
+    """
+    from rich.console import Console
+
+    console = Console()
+    items = _iter_pending()
+    state = _load_state()
+    pending = [(c, p) for c, p in items if state.get(str(p)) != "done"]
+    total = len(items)
+    if not pending:
+        console.print("[green]Nothing to review[/green]")
+        return 0
+
+    console.print(f"[bold]auto-approving {len(pending)} of {total} pending[/bold]")
+    approved = rejected = 0
+
+    for category, path in pending:
+        try:
+            fixture = parse_fixture(json.loads(path.read_text()))
+            result = validate_one(fixture, category)
+            errors = result.errors
+        except Exception as exc:
+            errors = [f"schema error: {exc}"]
+
+        if not errors:
+            _move(path, APPROVED_ROOT, category)
+            approved += 1
+        else:
+            dest = _move(path, REJECTED_ROOT, category)
+            dest.with_suffix(".reason.json").write_text(
+                json.dumps({"errors": errors}, indent=2, ensure_ascii=False)
+            )
+            rejected += 1
+            console.print(f"[red]✗[/red] {category}/{path.name}: {errors[0]}")
+
+        state[str(path)] = "done"
+        _save_state(state)
+
+    console.print(
+        f"\n[bold]auto-approve done:[/bold] "
+        f"[green]{approved} approved[/green], [red]{rejected} rejected[/red]"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--non-interactive", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--non-interactive", action="store_true")
+    mode.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="bypass TUI; move validator-passing pending fixtures to _approved/",
+    )
     args = parser.parse_args()
+    if args.auto_approve:
+        return auto_approve()
     return non_interactive() if args.non_interactive else interactive()
 
 
