@@ -30,8 +30,8 @@
 | 018 | llama.cpp CUDA Docker Compose serving of fine-tuned GGUF | implemented | — |
 | 019 | FastAPI app skeleton with /health endpoint | implemented | — |
 | 020 | Pytest suite for scoring heuristics | implemented | — |
-| 021 | WebSocket `/ws/session` voice session endpoint | planned | — |
-| 022 | Pipecat pipeline composition (VAD → STT → prompt builder → LLM → tool handler → TTS) | planned | — |
+| 021 | WebSocket `/ws/session` voice session endpoint | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
+| 022 | Pipecat pipeline composition (VAD → STT → prompt builder → LLM → tool handler → TTS) | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
 | 023 | System prompt builder unified with `finetune/format.py` content | planned | — |
 | 024 | REGISTER_BY_LEVEL + COLD_START_INSTRUCTIONS content | planned | — |
 | 025 | Tool handler consuming `log_turn` calls from LLM output | planned | — |
@@ -71,3 +71,5 @@
 | 2026-04-19 | Initial roadmap inferred by audit skill |
 | 2026-04-19 | Decisions recorded: single-tenant only; persistence = PostgreSQL + Apache AGE (replaces planned SQLite) |
 | 2026-04-19 | Added #046 web frontend for the voice agent (scope TBD) |
+| 2026-04-19 | Spec 021-voice-pipeline drafted; #021 + #022 → in-progress |
+| 2026-04-19 | Spec 021-voice-pipeline implemented; #021 + #022 → implemented. Package renamed `hable-ya/` → `hable_ya/`. |

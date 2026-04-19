@@ -67,7 +67,7 @@ _RECAST_EXAMPLES: dict[str, tuple[str, str]] = {
 
 # Phrases the recast scorer flags as explicit correction (eval/scoring/recast.py).
 # Listed verbatim in the prompt so the model knows exactly what to avoid.
-_FORBIDDEN_CORRECTION_PHRASES: tuple[str, ...] = (
+FORBIDDEN_CORRECTION_PHRASES: tuple[str, ...] = (
     "no se dice",
     "la forma correcta",
     "debes decir",
@@ -149,7 +149,7 @@ def _render_system_prompt(
         "",
         "Never use any of these phrases (they count as explicit correction):",
     ])
-    for phrase in _FORBIDDEN_CORRECTION_PHRASES:
+    for phrase in FORBIDDEN_CORRECTION_PHRASES:
         lines.append(f'  "{phrase}"')
     lines.append(
         "Also never use the Spanish word 'error' when talking to the learner."
