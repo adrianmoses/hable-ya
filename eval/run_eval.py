@@ -47,16 +47,23 @@ async def call_model(
     semaphore: asyncio.Semaphore,
     timeout: float,
     minimal_prompt: bool = False,
-    max_tokens: int = 256,
+    max_tokens: int = 1024,
+    no_thinking: bool = False,
 ) -> tuple[str, list[Any] | None]:
     """Send a fixture to the model and return (response_text, tool_calls).
 
     ``minimal_prompt=True`` sends only a role-setting system message. Use for
     measuring raw untuned-model baseline (no prompt engineering at all).
 
-    ``max_tokens`` caps generation length. 256 is enough for a 1-3 sentence
-    recast plus the log_turn tool call; cutting this down from unbounded
-    saves ~20-30% wall time on memory-bandwidth-bound hardware.
+    ``max_tokens`` caps generation length. With Gemma 4 thinking enabled the
+    model spends ~150-450 tokens on hidden reasoning before any visible
+    content; 1024 leaves room for both. Drop to ~256 only when pairing with
+    ``no_thinking=True``.
+
+    ``no_thinking=True`` disables the chat template's thinking block via
+    ``chat_template_kwargs={"enable_thinking": False}``. Faster and fits in
+    smaller token budgets, but the model loses its error-detection step and
+    will under-populate ``errors`` in tool calls.
     """
     system_content = (
         MINIMAL_SYSTEM_PROMPT
@@ -71,6 +78,10 @@ async def call_model(
     for turn in fixture.conversation:
         messages.append({"role": turn.role, "content": turn.content})
 
+    extra_body: dict[str, Any] = {}
+    if no_thinking:
+        extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+
     async with semaphore:
         response = await asyncio.wait_for(
             client.chat.completions.create(
@@ -78,6 +89,7 @@ async def call_model(
                 messages=messages,
                 temperature=0.0,
                 max_tokens=max_tokens,
+                extra_body=extra_body or None,
             ),
             timeout=timeout,
         )
@@ -218,6 +230,8 @@ async def run_eval(args: argparse.Namespace) -> EvalOutput:
                 response_text, tool_calls = await call_model(
                     client, fixture, semaphore, args.timeout,
                     minimal_prompt=args.minimal_prompt,
+                    max_tokens=args.max_tokens,
+                    no_thinking=args.no_thinking,
                 )
                 result = score_turn(fixture, response_text, tool_calls)
                 results.append(result)
@@ -295,6 +309,23 @@ def main() -> None:
         "recast instructions, no tool-call schema). Use to measure the raw "
         "untuned baseline — i.e., Gemma 4 with no prompt engineering. "
         "Tool-fidelity metrics will typically be near zero in this mode.",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=1024,
+        help="Max completion tokens per request (default: 1024). Gemma 4's "
+        "thinking block can consume 150-450 tokens before any visible "
+        "content; budgets below ~512 cause silent (empty-content) responses "
+        "on harder fixtures unless paired with --no-thinking.",
+    )
+    parser.add_argument(
+        "--no-thinking",
+        action="store_true",
+        help="Disable Gemma 4's chat-template thinking block via "
+        "chat_template_kwargs.enable_thinking=False. ~4x faster and fits in "
+        "smaller token budgets, but the model loses its error-detection "
+        "step and will under-populate the `errors` field in log_turn calls.",
     )
     args = parser.parse_args()
     asyncio.run(run_eval(args))
