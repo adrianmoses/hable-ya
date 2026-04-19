@@ -23,6 +23,7 @@ from pipecat.transports.websocket.fastapi import (
 
 from hable_ya.pipeline.prompts.builder import build_system_prompt
 from hable_ya.pipeline.runner import DEFAULT_LEARNER, build_pipeline_task
+from hable_ya.pipeline.serializer import RawPCMSerializer
 
 logger = logging.getLogger("hable_ya.api.session")
 router = APIRouter()
@@ -49,6 +50,7 @@ async def session_ws(websocket: WebSocket) -> None:
     transport = FastAPIWebsocketTransport(
         websocket,
         FastAPIWebsocketParams(
+            serializer=RawPCMSerializer(settings.audio_sample_rate),
             audio_in_enabled=True,
             audio_out_enabled=True,
             audio_in_sample_rate=settings.audio_sample_rate,
