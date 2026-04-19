@@ -248,3 +248,6 @@ models/
 baseline_v2.json
 finetuned_v2.json
 
+# Runtime observation sink (spec 023; replaced by persistence in #026)
+runtime_turns.jsonl
+

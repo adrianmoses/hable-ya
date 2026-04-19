@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | id | 023 |
-| status | approved |
+| status | implemented |
 | created | 2026-04-19 |
 | covers roadmap | #023, #024, #025, #027 (bundle) |
 
