@@ -67,6 +67,8 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
@@ -79,4 +81,4 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["hable-ya", "api"]
+packages = ["hable_ya", "api"]

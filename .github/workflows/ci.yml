@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      # Skip the `finetune` extra: torch/unsloth are multi-GB and are only
+      # needed for model training, which runs in notebooks, not CI.
+      - name: Install deps (eval + dev extras)
+        run: uv sync --extra eval --extra dev
+
+      - name: Download Spanish spaCy model
+        run: uv run python -m spacy download es_core_news_sm
+
+      # Ruff/mypy are scoped to the directories whose lint/type debt has been
+      # paid down (hable_ya, api, and the new tests from spec 021). The rest of
+      # the repo (eval/, finetune/, scripts/fixtures/, older tests/) has
+      # pre-existing issues that are out of scope for this job.
+      - name: Ruff
+        run: |
+          uv run ruff check \
+            hable_ya/ api/ \
+            tests/test_tool_handler.py \
+            tests/test_runner.py \
+            tests/test_health.py \
+            tests/test_prompts.py \
+            scripts/voice_client.py
+
+      - name: Mypy
+        run: |
+          uv run mypy \
+            hable_ya/ api/ \
+            tests/test_tool_handler.py \
+            tests/test_runner.py \
+            tests/test_health.py \
+            tests/test_prompts.py
+
+      - name: Pytest
+        run: uv run pytest tests/ -v

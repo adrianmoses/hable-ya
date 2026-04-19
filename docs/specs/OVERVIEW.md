@@ -61,7 +61,7 @@ From `pyproject.toml` and `docker-compose.yml`:
 - **Runner:** pytest with `asyncio_mode = "auto"`, `testpaths = ["tests"]`.
 - **Implemented tests:** `test_scoring.py` (comprehensive: tool-call parsing in 3 surface formats, recast heuristic, language detection, register), `test_themes.py`, `test_validate_fixtures.py`, `test_variance.py`.
 - **Stubbed tests:** `test_db.py`, `test_prompts.py`, `test_tools.py` — docstrings only.
-- **CI:** None detected in repo (no `.github/workflows/`, no CI config). `[INFERRED: uncertain — tests appear to be run locally only]`.
+- **CI:** GitHub Actions workflow at `.github/workflows/ci.yml` runs `pytest`, scoped `ruff`, and scoped `mypy` on push to `main` and all PRs. Ruff/mypy coverage is intentionally scoped to paths whose lint/type debt has been paid down (`hable_ya/`, `api/`, and the voice-pipeline tests); other modules (`eval/`, `finetune/`, `scripts/fixtures/`) have pre-existing issues that are out of scope.
 
 ## Audit Notes
 

@@ -75,6 +75,61 @@ def _parse_args_payload(text: str, start: int) -> tuple[dict[str, Any], int]:
     return {}, start
 
 
+_PYTHON_KEYWORDS = {"print", "if", "for", "while", "return", "def", "class"}
+
+
+def find_tool_call_spans(text: str) -> list[tuple[int, int]]:
+    """Return `(start, end)` byte offsets of every text-form tool call.
+
+    Covers both `[TOOL_CALL: name]{...}` and `name({...})`. For the function-
+    call form the span also absorbs the trailing `)` so callers that strip
+    these spans don't leave a dangling paren behind.
+    """
+    spans: list[tuple[int, int]] = []
+    for match in _TOOL_CALL_HEADER_RE.finditer(text):
+        _, end = _parse_args_payload(text, match.end())
+        if end > match.end():
+            spans.append((match.start(), end))
+    for match in _FUNCTION_CALL_RE.finditer(text):
+        if match.group(1) in _PYTHON_KEYWORDS:
+            continue
+        if any(s <= match.start() < e for s, e in spans):
+            continue
+        _, end = _parse_args_payload(text, match.end())
+        if end > match.end():
+            # Consume the closing `)` (plus any inter-token whitespace) so the
+            # sentence-counter doesn't treat the lone paren as a fragment.
+            paren = end
+            while paren < len(text) and text[paren] in " \t":
+                paren += 1
+            if paren < len(text) and text[paren] == ")":
+                end = paren + 1
+            spans.append((match.start(), end))
+    spans.sort()
+    return spans
+
+
+def strip_tool_calls(text: str) -> str:
+    """Remove every text-form tool call from `text`.
+
+    Shared by the eval scorer (so `clean_response` doesn't include JSON
+    payloads that poison register / L1 / sentence-count heuristics) and the
+    runtime tool-handler (so tool syntax never reaches TTS).
+    """
+    spans = find_tool_call_spans(text)
+    if not spans:
+        return text.strip()
+    out: list[str] = []
+    cursor = 0
+    for start, end in spans:
+        if start < cursor:
+            continue
+        out.append(text[cursor:start])
+        cursor = end
+    out.append(text[cursor:])
+    return "".join(out).strip()
+
+
 def parse_tool_calls(
     response_text: str,
     api_tool_calls: list[Any] | None,
@@ -107,10 +162,9 @@ def parse_tool_calls(
         results.append({"name": match.group(1), "arguments": args})
     # Also pick up `name({...})` style. Skip Python keywords and common
     # false-positives that look like function calls but aren't tool emissions.
-    _IGNORED_NAMES = {"print", "if", "for", "while", "return", "def", "class"}
     for match in _FUNCTION_CALL_RE.finditer(response_text):
         name = match.group(1)
-        if name in _IGNORED_NAMES:
+        if name in _PYTHON_KEYWORDS:
             continue
         # Skip if this position was already covered by the [TOOL_CALL:] match
         # above (avoids double-counting when both forms accidentally coexist).
@@ -177,51 +231,6 @@ def _extract_target_forms(fixture: Fixture) -> list[str]:
     return forms
 
 
-_IGNORED_FN_NAMES = {"print", "if", "for", "while", "return", "def", "class"}
-
-
-def _strip_tool_calls(text: str) -> str:
-    """Remove tool-call blocks from response text in both surface forms.
-
-    Handles `[TOOL_CALL: name]{...}` and `name({...})`. The natural
-    function-call form is what the fine-tuned model actually emits, and its
-    JSON payload contains the learner's verbatim utterance plus English keys
-    — leaving it in `clean_response` poisons error_repeated / register / L1
-    / sentence-count scoring.
-    """
-    spans: list[tuple[int, int]] = []
-    for match in _TOOL_CALL_HEADER_RE.finditer(text):
-        _, end = _parse_args_payload(text, match.end())
-        if end > match.end():
-            spans.append((match.start(), end))
-    for match in _FUNCTION_CALL_RE.finditer(text):
-        if match.group(1) in _IGNORED_FN_NAMES:
-            continue
-        _, end = _parse_args_payload(text, match.end())
-        if end > match.end():
-            # Also consume the closing `)` (and any whitespace before it)
-            # so the strip leaves clean prose, not a dangling paren that the
-            # sentence-counter treats as an extra fragment.
-            paren = end
-            while paren < len(text) and text[paren] in " \t":
-                paren += 1
-            if paren < len(text) and text[paren] == ")":
-                end = paren + 1
-            spans.append((match.start(), end))
-    if not spans:
-        return text.strip()
-    spans.sort()
-    out: list[str] = []
-    cursor = 0
-    for start, end in spans:
-        if start < cursor:
-            continue
-        out.append(text[cursor:start])
-        cursor = end
-    out.append(text[cursor:])
-    return "".join(out).strip()
-
-
 # ---------------------------------------------------------------------------
 # Result models
 # ---------------------------------------------------------------------------
@@ -278,7 +287,7 @@ def score_turn(
     model_tool_calls: list[Any] | None,
 ) -> TurnResult:
     """Score a single model response against a fixture's expected output."""
-    clean_response = _strip_tool_calls(model_response)
+    clean_response = strip_tool_calls(model_response)
     parsed_calls = parse_tool_calls(model_response, model_tool_calls)
     error_forms = _extract_error_forms(fixture)
     target_forms = _extract_target_forms(fixture)
