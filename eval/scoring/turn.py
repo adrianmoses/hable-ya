@@ -163,17 +163,61 @@ def _extract_error_forms(fixture: Fixture) -> list[str]:
     return forms
 
 
+def _extract_target_forms(fixture: Fixture) -> list[str]:
+    """Collect the corrected `target` tokens from fixture expected tool calls."""
+    forms: list[str] = []
+    for tc in fixture.expected.tool_calls:
+        args = tc.arguments
+        for key in ("errors", "errors_observed", "errors_detected"):
+            errors = args.get(key, [])
+            if isinstance(errors, list):
+                for err in errors:
+                    if isinstance(err, dict) and err.get("target"):
+                        forms.append(err["target"])
+    return forms
+
+
+_IGNORED_FN_NAMES = {"print", "if", "for", "while", "return", "def", "class"}
+
+
 def _strip_tool_calls(text: str) -> str:
-    """Remove inline [TOOL_CALL: ...]{...} blocks from response text."""
+    """Remove tool-call blocks from response text in both surface forms.
+
+    Handles `[TOOL_CALL: name]{...}` and `name({...})`. The natural
+    function-call form is what the fine-tuned model actually emits, and its
+    JSON payload contains the learner's verbatim utterance plus English keys
+    — leaving it in `clean_response` poisons error_repeated / register / L1
+    / sentence-count scoring.
+    """
+    spans: list[tuple[int, int]] = []
+    for match in _TOOL_CALL_HEADER_RE.finditer(text):
+        _, end = _parse_args_payload(text, match.end())
+        if end > match.end():
+            spans.append((match.start(), end))
+    for match in _FUNCTION_CALL_RE.finditer(text):
+        if match.group(1) in _IGNORED_FN_NAMES:
+            continue
+        _, end = _parse_args_payload(text, match.end())
+        if end > match.end():
+            # Also consume the closing `)` (and any whitespace before it)
+            # so the strip leaves clean prose, not a dangling paren that the
+            # sentence-counter treats as an extra fragment.
+            paren = end
+            while paren < len(text) and text[paren] in " \t":
+                paren += 1
+            if paren < len(text) and text[paren] == ")":
+                end = paren + 1
+            spans.append((match.start(), end))
+    if not spans:
+        return text.strip()
+    spans.sort()
     out: list[str] = []
     cursor = 0
-    for match in _TOOL_CALL_HEADER_RE.finditer(text):
-        out.append(text[cursor:match.start()])
-        try:
-            _, end = _JSON_DECODER.raw_decode(text, match.end())
-            cursor = end
-        except json.JSONDecodeError:
-            cursor = match.end()
+    for start, end in spans:
+        if start < cursor:
+            continue
+        out.append(text[cursor:start])
+        cursor = end
     out.append(text[cursor:])
     return "".join(out).strip()
 
@@ -237,9 +281,12 @@ def score_turn(
     clean_response = _strip_tool_calls(model_response)
     parsed_calls = parse_tool_calls(model_response, model_tool_calls)
     error_forms = _extract_error_forms(fixture)
+    target_forms = _extract_target_forms(fixture)
 
     # --- Pedagogical signals ---
-    sig_recast_present = recast_present(clean_response, fixture.expected.recast_form)
+    sig_recast_present = recast_present(
+        clean_response, fixture.expected.recast_form, target_forms
+    )
     sig_recast_explicit = recast_explicit(clean_response)
     sig_register = check_register_heuristic(clean_response, fixture.metadata.cefr_band)
     sig_sentence = 1 <= _count_sentences(clean_response) <= 3

@@ -31,6 +31,7 @@ eval = [
     "anthropic>=0.40.0",           # Opus for synthetic learner + judge
     "rich>=13.0.0",                # pretty eval output
     "pandas>=2.0.0",               # results aggregation
+    "spacy>=3.7",                  # Spanish lemmatization for recast scoring
 ]
 finetune = [
     "anthropic>=0.40.0",           # Opus for skeleton generation
