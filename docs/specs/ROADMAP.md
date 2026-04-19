@@ -55,7 +55,7 @@
 | 043 | On-device deployment target (device class, OS, memory budget) | planned | — |
 | 044 | Kaggle writeup and public share | planned | — |
 | 045 | Multi-language support (source/target pairs beyond en→es) | planned | — |
-| 046 | Web frontend for the voice agent (connects to `/ws/session`, mic capture + audio playback; scope TBD) | planned | — |
+| 046 | Web frontend for the voice agent (connects to `/ws/session`, mic capture + audio playback; scope TBD) | implemented | [046-web-frontend-voice-shell](046-web-frontend-voice-shell/spec.md) |
 
 ## Status Values
 
@@ -73,3 +73,5 @@
 | 2026-04-19 | Added #046 web frontend for the voice agent (scope TBD) |
 | 2026-04-19 | Spec 021-voice-pipeline drafted; #021 + #022 → in-progress |
 | 2026-04-19 | Spec 021-voice-pipeline implemented; #021 + #022 → implemented. Package renamed `hable-ya/` → `hable_ya/`. |
+| 2026-04-19 | Spec 046-web-frontend-voice-shell drafted (scoped to Home + Session, orb variant A, no captions); #046 → in-progress. |
+| 2026-04-19 | Spec 046-web-frontend-voice-shell implemented; #046 → implemented. Backend change: added `hable_ya/pipeline/serializer.py::RawPCMSerializer` (wired into `api/routes/session.py`); Pipecat JS SDK dropped in favor of native WebSocket + AudioWorklet. |
