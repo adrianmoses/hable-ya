@@ -27,5 +27,10 @@ class Settings(BaseSettings):
 
     audio_sample_rate: int = 16000
 
+    default_learner_band: str = "A2"
+    runtime_turns_path: Path = Path("runtime_turns.jsonl")
+    observation_ring_size: int = 100
+    dev_endpoints_enabled: bool = False
+
 
 settings = Settings()

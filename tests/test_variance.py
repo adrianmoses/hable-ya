@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-import pytest
-
+from scripts.fixtures.prompts import ALL_ERROR_TYPES
 from scripts.fixtures.prompts._variance import (
     DIFFICULTIES,
     FLUENCY_SIGNALS,
@@ -14,7 +13,6 @@ from scripts.fixtures.prompts._variance import (
     render_axes_block,
     sample_axes,
 )
-from scripts.fixtures.prompts import ALL_ERROR_TYPES
 
 
 class TestSampleAxes:

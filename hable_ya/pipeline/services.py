@@ -50,6 +50,12 @@ def load_services(settings: Settings) -> Services:
         settings.whisper_device,
     )
 
+    # Gemma 4 in llama.cpp defaults to thinking mode, which splits the
+    # output stream into `delta.reasoning_content` (chain-of-thought) and
+    # `delta.content`. Pipecat's OpenAILLMService only forwards `content`,
+    # so with thinking enabled the Spanish reply never reaches our handler
+    # or TTS. Disable via chat_template_kwargs so all output lands in
+    # `content`.
     llm = OpenAILLMService(
         model=settings.llm_model_name,
         base_url=f"{settings.llama_cpp_url.rstrip('/')}/v1",
@@ -60,6 +66,11 @@ def load_services(settings: Settings) -> Services:
             temperature=0.7,
             top_p=0.9,
             max_completion_tokens=settings.llm_max_tokens,
+            extra={
+                "extra_body": {
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
+            },
         ),
     )
     logger.info("  LLM service ready (%s)", settings.llama_cpp_url)

@@ -1,5 +1,7 @@
-"""Unit tests for HableYaToolHandler (tool-call stripping processor)."""
+"""Unit tests for HableYaToolHandler (log_turn parser + TTS-strip processor)."""
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 from pipecat.frames.frames import (
@@ -11,6 +13,7 @@ from pipecat.frames.frames import (
 from pipecat.processors.frame_processor import FrameDirection
 
 from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
+from hable_ya.runtime.observations import TurnObservationSink
 
 
 async def _drive(
@@ -30,8 +33,6 @@ async def _drive(
         emitted.append(frame)
 
     handler.push_frame = capture  # type: ignore[method-assign]
-
-    # Also avoid the observer branch in super().process_frame.
     handler._observer = None
 
     for f in frames:
@@ -43,42 +44,72 @@ def _texts(frames: list[Frame]) -> list[str]:
     return [f.text for f in frames if isinstance(f, LLMTextFrame)]
 
 
-@pytest.mark.asyncio
-async def test_strips_tool_call_at_tail() -> None:
-    handler = HableYaToolHandler()
-    response = (
-        '¡Qué bien! ¿Adónde fuiste?\n\n'
-        '[TOOL_CALL: log_turn]{"learner_id": "x", "L1_used": false, '
-        '"errors_observed": [], "vocab_produced": [], "fluency_signal": "strong"}'
+@pytest.fixture
+def sink(tmp_path: Path) -> TurnObservationSink:
+    return TurnObservationSink(tmp_path / "turns.jsonl", ring_size=10)
+
+
+async def test_happy_path_function_call_style(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s1")
+    tool_call = (
+        'log_turn({"learner_utterance": "Yo es Juan.", '
+        '"errors": [{"type": "ser_estar", "produced": "es", "target": "soy"}], '
+        '"fluency_signal": "moderate", "L1_used": false})'
     )
     frames: list[Frame] = [
         LLMFullResponseStartFrame(),
-        LLMTextFrame("¡Qué bien! "),
-        LLMTextFrame("¿Adónde fuiste?\n\n"),
-        LLMTextFrame(
-            '[TOOL_CALL: log_turn]{"learner_id": "x", "L1_used": false, '
-            '"errors_observed": [], "vocab_produced": [], '
-            '"fluency_signal": "strong"}'
-        ),
+        LLMTextFrame("Hola Juan. "),
+        LLMTextFrame(tool_call),
         LLMFullResponseEndFrame(),
     ]
     emitted = await _drive(handler, frames)
 
-    cleaned = "".join(_texts(emitted))
-    assert "TOOL_CALL" not in cleaned
-    assert "¡Qué bien!" in cleaned
-    assert "¿Adónde fuiste?" in cleaned
-    assert response  # sanity — original contained the tool call
+    recent = sink.recent()
+    assert len(recent) == 1
+    obs = recent[0]
+    assert obs.session_id == "s1"
+    assert obs.learner_utterance == "Yo es Juan."
+    assert obs.fluency_signal == "moderate"
+    assert obs.L1_used is False
+    assert obs.errors == [{"type": "ser_estar", "produced": "es", "target": "soy"}]
+    assert sink.missing == 0
 
-    # Expect exactly one Start, one End, and one cleaned LLMTextFrame.
+    cleaned = "".join(_texts(emitted))
+    assert "log_turn(" not in cleaned
+    assert ")" not in cleaned
+    assert cleaned.strip() == "Hola Juan."
+    # One Start, one End, one cleaned LLMTextFrame.
     assert sum(isinstance(f, LLMFullResponseStartFrame) for f in emitted) == 1
     assert sum(isinstance(f, LLMFullResponseEndFrame) for f in emitted) == 1
     assert sum(isinstance(f, LLMTextFrame) for f in emitted) == 1
 
 
-@pytest.mark.asyncio
-async def test_passes_through_when_no_tool_call() -> None:
-    handler = HableYaToolHandler()
+async def test_happy_path_legacy_tool_call(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s2")
+    legacy = (
+        '[TOOL_CALL: log_turn]{"learner_utterance": "Hola.", '
+        '"errors": [], "fluency_signal": "strong", "L1_used": false}'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame("¡Qué bien! "),
+        LLMTextFrame(legacy),
+        LLMFullResponseEndFrame(),
+    ]
+    emitted = await _drive(handler, frames)
+
+    recent = sink.recent()
+    assert len(recent) == 1
+    assert recent[0].fluency_signal == "strong"
+    assert sink.missing == 0
+
+    cleaned = "".join(_texts(emitted))
+    assert "TOOL_CALL" not in cleaned
+    assert "¡Qué bien!" in cleaned
+
+
+async def test_no_tool_call_increments_missing(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s3")
     frames: list[Frame] = [
         LLMFullResponseStartFrame(),
         LLMTextFrame("Hola, "),
@@ -87,60 +118,69 @@ async def test_passes_through_when_no_tool_call() -> None:
     ]
     emitted = await _drive(handler, frames)
 
-    cleaned = "".join(_texts(emitted))
-    assert cleaned == "Hola, ¿cómo estás?"
+    assert sink.recent() == []
+    assert sink.missing == 1
+    assert "".join(_texts(emitted)) == "Hola, ¿cómo estás?"
 
 
-@pytest.mark.asyncio
-async def test_strips_function_call_style() -> None:
-    """Gemma base model sometimes emits `name({...})` instead of the bracket form.
-
-    The closing `)` must be consumed along with the payload — otherwise TTS
-    synthesizes a lone paren at the end of the utterance.
-    """
-    handler = HableYaToolHandler()
+async def test_malformed_errors_dropped(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s4")
+    bad = (
+        'log_turn({"learner_utterance": "Hola.", '
+        '"errors": "not-a-list", '
+        '"fluency_signal": "moderate", "L1_used": false})'
+    )
     frames: list[Frame] = [
         LLMFullResponseStartFrame(),
-        LLMTextFrame("Entiendo. "),
+        LLMTextFrame("Hola. "),
+        LLMTextFrame(bad),
+        LLMFullResponseEndFrame(),
+    ]
+    emitted = await _drive(handler, frames)
+
+    assert sink.recent() == []
+    assert sink.missing == 1
+    cleaned = "".join(_texts(emitted))
+    assert cleaned.strip() == "Hola."
+
+
+async def test_invalid_fluency_signal_dropped(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s5")
+    bad = (
+        'log_turn({"learner_utterance": "Hola.", '
+        '"errors": [], "fluency_signal": "low", "L1_used": false})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame("Hola. "),
+        LLMTextFrame(bad),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+
+    assert sink.recent() == []
+    assert sink.missing == 1
+
+
+async def test_empty_response_emits_no_text(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s6")
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
         LLMTextFrame(
-            'log_turn({"learner_id": "x", "L1_used": false, '
-            '"errors_observed": [], "vocab_produced": [], '
-            '"fluency_signal": "moderate"})'
+            'log_turn({"learner_utterance": "Hola.", "errors": [], '
+            '"fluency_signal": "moderate", "L1_used": false})'
         ),
         LLMFullResponseEndFrame(),
     ]
     emitted = await _drive(handler, frames)
 
-    cleaned = "".join(_texts(emitted))
-    assert "log_turn(" not in cleaned
-    assert ")" not in cleaned
-    assert cleaned.strip() == "Entiendo."
+    assert sum(isinstance(f, LLMTextFrame) for f in emitted) == 0
+    assert len(sink.recent()) == 1
+    assert sink.missing == 0
 
 
-@pytest.mark.asyncio
-async def test_malformed_tool_call_passes_through() -> None:
-    """Unclosed JSON payload — parser returns no span, text passes through.
-
-    Accepted v1 behavior per spec §Testing Approach. Spec 025 can tighten this.
-    """
-    handler = HableYaToolHandler()
-    frames: list[Frame] = [
-        LLMFullResponseStartFrame(),
-        LLMTextFrame("Texto. [TOOL_CALL: log_turn]{broken"),
-        LLMFullResponseEndFrame(),
-    ]
-    emitted = await _drive(handler, frames)
-
-    cleaned = "".join(_texts(emitted))
-    assert "Texto." in cleaned
-    # The malformed block survives — documented behavior.
-    assert "TOOL_CALL" in cleaned
-
-
-@pytest.mark.asyncio
-async def test_non_llm_frames_pass_through_unchanged() -> None:
-    """System frames between responses should not be buffered or dropped."""
-    handler = HableYaToolHandler()
+async def test_non_llm_frames_pass_through(sink: TurnObservationSink) -> None:
+    handler = HableYaToolHandler(sink, session_id="s7")
 
     class OtherFrame(Frame):
         pass
@@ -149,23 +189,25 @@ async def test_non_llm_frames_pass_through_unchanged() -> None:
     emitted = await _drive(handler, [other])
 
     assert emitted == [other]
+    assert sink.missing == 0
 
 
-@pytest.mark.asyncio
-async def test_empty_response_does_not_emit_text_frame() -> None:
-    """If the response is entirely a tool call, no TTS text is emitted."""
-    handler = HableYaToolHandler()
+async def test_unclosed_tool_call_counts_as_missing(
+    sink: TurnObservationSink,
+) -> None:
+    """Unclosed JSON payload → parser finds no call → counted as missing.
+
+    The malformed text still passes through (documented degradation path;
+    a stricter parser is out of scope for this slice).
+    """
+    handler = HableYaToolHandler(sink, session_id="s8")
     frames: list[Frame] = [
         LLMFullResponseStartFrame(),
-        LLMTextFrame(
-            '[TOOL_CALL: log_turn]{"learner_id": "x", "L1_used": false, '
-            '"errors_observed": [], "vocab_produced": [], '
-            '"fluency_signal": "low"}'
-        ),
+        LLMTextFrame("Texto. [TOOL_CALL: log_turn]{broken"),
         LLMFullResponseEndFrame(),
     ]
     emitted = await _drive(handler, frames)
 
-    assert sum(isinstance(f, LLMTextFrame) for f in emitted) == 0
-    assert sum(isinstance(f, LLMFullResponseStartFrame) for f in emitted) == 1
-    assert sum(isinstance(f, LLMFullResponseEndFrame) for f in emitted) == 1
+    assert sink.missing == 1
+    cleaned = "".join(_texts(emitted))
+    assert "Texto." in cleaned

@@ -1,10 +1,7 @@
 """Tests for the strict universal_checks added in Phase 2."""
 from __future__ import annotations
 
-import copy
 from typing import Any
-
-import pytest
 
 from eval.fixtures.schema import Fixture, parse_fixture
 from scripts.fixtures.validate_fixtures import universal_checks, validate_one

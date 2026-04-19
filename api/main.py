@@ -22,6 +22,7 @@ from api.routes.health import router as health_router  # noqa: E402
 from api.routes.session import router as session_router  # noqa: E402
 from hable_ya.config import settings  # noqa: E402
 from hable_ya.pipeline.services import load_services, warmup_llm  # noqa: E402
+from hable_ya.runtime.observations import TurnObservationSink  # noqa: E402
 
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("hable_ya.api")
@@ -32,6 +33,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.ready = False
     app.state.settings = settings
     app.state.services = load_services(settings)
+    app.state.observation_sink = TurnObservationSink(
+        path=settings.runtime_turns_path,
+        ring_size=settings.observation_ring_size,
+    )
+    logger.info(
+        "Turn observations → %s (ring size %d)",
+        settings.runtime_turns_path,
+        settings.observation_ring_size,
+    )
     await warmup_llm(settings)
     app.state.ready = True
     logger.info("hable-ya ready on %s:%d", settings.host, settings.port)
@@ -41,3 +51,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="hable-ya", lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(session_router)
+
+if settings.dev_endpoints_enabled:
+    from api.routes.dev import router as dev_router  # noqa: E402
+
+    logger.warning("Dev endpoints enabled — do not use in production")
+    app.include_router(dev_router)

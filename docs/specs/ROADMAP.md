@@ -32,11 +32,11 @@
 | 020 | Pytest suite for scoring heuristics | implemented | — |
 | 021 | WebSocket `/ws/session` voice session endpoint | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
 | 022 | Pipecat pipeline composition (VAD → STT → prompt builder → LLM → tool handler → TTS) | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
-| 023 | System prompt builder unified with `finetune/format.py` content | planned | — |
-| 024 | REGISTER_BY_LEVEL + COLD_START_INSTRUCTIONS content | planned | — |
-| 025 | Tool handler consuming `log_turn` calls from LLM output | planned | — |
+| 023 | System prompt builder unified with `finetune/format.py` content | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
+| 024 | REGISTER_BY_LEVEL + COLD_START_INSTRUCTIONS content | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
+| 025 | Tool handler consuming `log_turn` calls from LLM output | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
 | 026 | Turn observer persisting turn observations | planned | — |
-| 027 | `HABLE_YA_TOOLS` schema definition (log_turn + any others) | planned | — |
+| 027 | `HABLE_YA_TOOLS` schema definition (log_turn + any others) | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
 | 028 | Postgres + Apache AGE: docker-compose service, async driver (asyncpg), schema, migrations, init script | planned | — |
 | 029 | Learner profile module (state across sessions) | planned | — |
 | 030 | Learner error-pattern tracking | planned | — |
@@ -56,6 +56,7 @@
 | 044 | Kaggle writeup and public share | planned | — |
 | 045 | Multi-language support (source/target pairs beyond en→es) | planned | — |
 | 046 | Web frontend for the voice agent (connects to `/ws/session`, mic capture + audio playback; scope TBD) | implemented | [046-web-frontend-voice-shell](046-web-frontend-voice-shell/spec.md) |
+| 047 | STT quality investigation (Whisper model size, VAD tuning, `initial_prompt` priming) — current `small` model produces poor Spanish transcripts under live conditions | planned | — |
 
 ## Status Values
 
@@ -75,3 +76,6 @@
 | 2026-04-19 | Spec 021-voice-pipeline implemented; #021 + #022 → implemented. Package renamed `hable-ya/` → `hable_ya/`. |
 | 2026-04-19 | Spec 046-web-frontend-voice-shell drafted (scoped to Home + Session, orb variant A, no captions); #046 → in-progress. |
 | 2026-04-19 | Spec 046-web-frontend-voice-shell implemented; #046 → implemented. Backend change: added `hable_ya/pipeline/serializer.py::RawPCMSerializer` (wired into `api/routes/session.py`); Pipecat JS SDK dropped in favor of native WebSocket + AudioWorklet. |
+| 2026-04-19 | Spec 023-agent-loop drafted (bundles #023 + #024 + #025 + #027: unified per-band system prompt, REGISTER_BY_LEVEL + COLD_START content, `log_turn` tool handler with JSONL sink, HABLE_YA_TOOLS schema); #026 (persistence) deferred. |
+| 2026-04-19 | Spec 023-agent-loop implemented; #023 + #024 + #025 + #027 → implemented. Unified prompt renderer in `hable_ya/pipeline/prompts/render.py` (shared with `finetune/format.py`); `log_turn` parsed to JSONL sink + ring buffer + `GET /dev/observations`; disabled Gemma thinking mode via `chat_template_kwargs.enable_thinking=false`. |
+| 2026-04-19 | Added #047 STT quality investigation (current Whisper `small` produces poor Spanish transcripts under live conditions). |
