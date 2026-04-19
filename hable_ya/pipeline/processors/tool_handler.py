@@ -44,6 +44,7 @@ class HableYaToolHandler(FrameProcessor):
         if isinstance(frame, LLMFullResponseStartFrame):
             self._buffer = []
             self._buffering = True
+            logger.info("session %s: LLM response start", self._session_id)
             await self.push_frame(frame, direction)
             return
 
@@ -63,11 +64,25 @@ class HableYaToolHandler(FrameProcessor):
     async def _flush(self, direction: FrameDirection) -> None:
         text = "".join(self._buffer)
 
+        logger.info(
+            "session %s: LLM response end · %d chunks · %d chars · text=%r",
+            self._session_id,
+            len(self._buffer),
+            len(text),
+            text,
+        )
+
         log_turn_calls = [
             call
             for call in parse_tool_calls(text, api_tool_calls=None)
             if call.get("name") == "log_turn"
         ]
+
+        logger.info(
+            "session %s: parsed %d log_turn call(s) from buffered text",
+            self._session_id,
+            len(log_turn_calls),
+        )
 
         if not log_turn_calls:
             self._sink.missing += 1
