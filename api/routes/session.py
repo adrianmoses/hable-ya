@@ -15,7 +15,6 @@ import logging
 import uuid
 
 from fastapi import APIRouter, WebSocket
-from pipecat.adapters.schemas.tools_schema import AdapterType, ToolsSchema
 from pipecat.pipeline.base_task import PipelineTaskParams
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.transports.websocket.fastapi import (
@@ -26,7 +25,6 @@ from pipecat.transports.websocket.fastapi import (
 from hable_ya.pipeline.prompts.builder import build_system_prompt
 from hable_ya.pipeline.runner import build_pipeline_task, default_learner
 from hable_ya.pipeline.serializer import RawPCMSerializer
-from hable_ya.tools.schema import HABLE_YA_TOOLS
 
 logger = logging.getLogger("hable_ya.api.session")
 router = APIRouter()
@@ -48,14 +46,13 @@ async def session_ws(websocket: WebSocket) -> None:
     sink = app.state.observation_sink
 
     learner = default_learner(settings)
+    # The fine-tuned Gemma is trained to emit plain-text `log_turn(...)` on its
+    # own; wiring HABLE_YA_TOOLS here puts llama.cpp in grammar-constrained
+    # tool-call mode and suppresses the Spanish reply entirely. The text-form
+    # tool call works without it. HABLE_YA_TOOLS lives in hable_ya/tools/schema.py
+    # as documentation of the payload shape; it's not injected into the LLM.
     context = LLMContext(
-        messages=[
-            {"role": "system", "content": build_system_prompt(learner)}
-        ],
-        tools=ToolsSchema(
-            standard_tools=[],
-            custom_tools={AdapterType.SHIM: HABLE_YA_TOOLS},
-        ),
+        messages=[{"role": "system", "content": build_system_prompt(learner)}],
     )
     transport = FastAPIWebsocketTransport(
         websocket,
