@@ -1,44 +1,56 @@
-"""Placeholder system prompt for the runtime pipeline.
+"""Runtime system-prompt builder.
 
-Minimal prompt that enforces Spanish-only replies, forbids explicit
-correction, and asks the model to emit a `log_turn` tool call after each
-reply. Does not adapt to learner band — the authoritative per-band builder
-lives in `finetune/format.py` and will supersede this.
+Thin wrapper over :func:`hable_ya.pipeline.prompts.render.render_system_prompt`
+that constructs a neutral ``SystemParams`` from a minimal learner dict. Until
+the learner model (#029) lands, the profile fields are static defaults — the
+only knob that actually shapes output is the CEFR band.
 """
 from __future__ import annotations
 
-from finetune.format import FORBIDDEN_CORRECTION_PHRASES
+from eval.fixtures.schema import CEFRBand, LearnerProfile, SystemParams, Theme
+from hable_ya.pipeline.prompts.register import COLD_START_INSTRUCTIONS
+from hable_ya.pipeline.prompts.render import render_system_prompt
 
-_FORBIDDEN_LIST = "\n".join(f'  - "{p}"' for p in FORBIDDEN_CORRECTION_PHRASES)
+# Production-level midpoints per band so the rendered prompt's "L1 reliance"
+# and "speech fluency" values aren't wildly off even though we don't track
+# them live. Informational only — the band override is authoritative.
+_BAND_MIDPOINT: dict[str, float] = {
+    "A1": 0.1,
+    "A2": 0.3,
+    "B1": 0.5,
+    "B2": 0.7,
+    "C1": 0.9,
+}
 
-_TOOL_CALL_TEMPLATE = (
-    '[TOOL_CALL: log_turn]{"learner_id": "<id>", '
-    '"learner_utterance": "<lo que dijo el estudiante>", '
-    '"L1_used": <true|false>, "errors_observed": [], '
-    '"vocab_produced": [], "fluency_signal": "<low|moderate|strong>"}'
+_NEUTRAL_THEME = Theme(
+    domain="conversación abierta",
+    prompt=(
+        "Mantén una conversación natural con el estudiante. Deja que el "
+        "estudiante elija el tema; si no propone uno, empieza con algo "
+        "cotidiano (su día, familia, planes, algo que le guste)."
+    ),
+    target_structures=[],
 )
 
-PLACEHOLDER_SYSTEM_PROMPT = (
-    "Eres un compañero de conversación en español para un estudiante que "
-    "está aprendiendo el idioma. Responde siempre en español, con frases "
-    "cortas y naturales (1–3 oraciones), a un registro adecuado para un "
-    "estudiante de nivel intermedio.\n"
-    "\n"
-    "Cuando el estudiante cometa un error, no lo corrijas explícitamente: "
-    "repite su idea de manera natural usando el español bien formado "
-    "(recast). Nunca uses ninguna de estas frases, porque cuentan como "
-    "corrección explícita:\n"
-    f"{_FORBIDDEN_LIST}\n"
-    "\n"
-    "Después de cada respuesta, emite una llamada de herramienta en la "
-    "forma exacta:\n"
-    f"{_TOOL_CALL_TEMPLATE}\n"
-    "\n"
-    "Haz preguntas de seguimiento cortas para mantener la conversación "
-    "fluida."
-)
+
+def _neutral_profile(band: CEFRBand) -> LearnerProfile:
+    level = _BAND_MIDPOINT.get(band, 0.5)
+    return LearnerProfile(
+        production_level=level,
+        L1_reliance=0.5,
+        speech_fluency=0.5,
+        is_calibrated=False,
+        sessions_completed=0,
+        vocab_strengths=[],
+        error_patterns=[],
+    )
 
 
 def build_system_prompt(learner: dict[str, object]) -> str:
-    # learner (band, id) currently unused — the placeholder is band-agnostic.
-    return PLACEHOLDER_SYSTEM_PROMPT
+    band_raw = learner.get("band", "A2")
+    band: CEFRBand = band_raw if isinstance(band_raw, str) else "A2"  # type: ignore[assignment]
+    params = SystemParams(profile=_neutral_profile(band), theme=_NEUTRAL_THEME)
+    prompt = render_system_prompt(params, band=band)
+    if learner.get("cold_start"):
+        prompt = f"{prompt}\n\n## Primera sesión\n{COLD_START_INSTRUCTIONS}"
+    return prompt

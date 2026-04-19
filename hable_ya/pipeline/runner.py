@@ -1,10 +1,10 @@
 """Pipecat pipeline composition for a single voice session.
 
 One WS connection → one `PipelineTask` built by `build_pipeline_task()`.
-Services (STT / LLM / TTS) are injected from the module-level shared pool in
-`hable_ya.pipeline.services` so each connection only owns the per-session
-bits: the transport, the LLM context, VAD/Smart-Turn analyzers, and the two
-custom processors.
+Services (STT/LLM/TTS) are injected from the module-level shared pool in
+`hable_ya.pipeline.services`; the per-app observation sink is injected from
+`app.state`. Per-session state (transport, LLM context, aggregators, custom
+processors) is built fresh inside the call.
 """
 from __future__ import annotations
 
@@ -29,8 +29,12 @@ from hable_ya.config import Settings
 from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
 from hable_ya.pipeline.processors.turn_observer import HableYaTurnObserver
 from hable_ya.pipeline.services import Services
+from hable_ya.runtime.observations import TurnObservationSink
 
-DEFAULT_LEARNER: dict[str, object] = {"band": "A2", "learner_id": "placeholder"}
+
+def default_learner(settings: Settings) -> dict[str, object]:
+    """Static learner dict used until the learner model (#029) lands."""
+    return {"band": settings.default_learner_band, "learner_id": "placeholder"}
 
 
 def build_pipeline(
@@ -38,11 +42,14 @@ def build_pipeline(
     transport: FastAPIWebsocketTransport,
     context: LLMContext,
     settings: Settings,
+    *,
+    sink: TurnObservationSink,
+    session_id: str,
 ) -> Pipeline:
     """Assemble the voice pipeline.
 
     Order is load-bearing: the tool handler sits immediately before TTS so
-    `[TOOL_CALL: ...]{...}` never reaches speech synthesis.
+    `log_turn(...)` syntax never reaches speech synthesis.
     """
     smart_turn = LocalSmartTurnAnalyzerV3(
         params=SmartTurnParams(stop_secs=settings.smart_turn_stop_secs)
@@ -59,7 +66,7 @@ def build_pipeline(
     aggregators = LLMContextAggregatorPair(context, user_params=user_params)
 
     turn_observer = HableYaTurnObserver()
-    tool_handler = HableYaToolHandler()
+    tool_handler = HableYaToolHandler(sink, session_id)
 
     return Pipeline(
         [
@@ -81,8 +88,18 @@ def build_pipeline_task(
     transport: FastAPIWebsocketTransport,
     context: LLMContext,
     settings: Settings,
+    *,
+    sink: TurnObservationSink,
+    session_id: str,
 ) -> PipelineTask:
-    pipeline = build_pipeline(services, transport, context, settings)
+    pipeline = build_pipeline(
+        services,
+        transport,
+        context,
+        settings,
+        sink=sink,
+        session_id=session_id,
+    )
     return PipelineTask(
         pipeline,
         params=PipelineParams(

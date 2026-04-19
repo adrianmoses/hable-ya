@@ -32,11 +32,11 @@
 | 020 | Pytest suite for scoring heuristics | implemented | — |
 | 021 | WebSocket `/ws/session` voice session endpoint | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
 | 022 | Pipecat pipeline composition (VAD → STT → prompt builder → LLM → tool handler → TTS) | implemented | [021-voice-pipeline](021-voice-pipeline/spec.md) ([decision](021-voice-pipeline/decision.md)) |
-| 023 | System prompt builder unified with `finetune/format.py` content | planned | — |
-| 024 | REGISTER_BY_LEVEL + COLD_START_INSTRUCTIONS content | planned | — |
-| 025 | Tool handler consuming `log_turn` calls from LLM output | planned | — |
+| 023 | System prompt builder unified with `finetune/format.py` content | in-progress | [023-agent-loop](023-agent-loop/spec.md) |
+| 024 | REGISTER_BY_LEVEL + COLD_START_INSTRUCTIONS content | in-progress | [023-agent-loop](023-agent-loop/spec.md) |
+| 025 | Tool handler consuming `log_turn` calls from LLM output | in-progress | [023-agent-loop](023-agent-loop/spec.md) |
 | 026 | Turn observer persisting turn observations | planned | — |
-| 027 | `HABLE_YA_TOOLS` schema definition (log_turn + any others) | planned | — |
+| 027 | `HABLE_YA_TOOLS` schema definition (log_turn + any others) | in-progress | [023-agent-loop](023-agent-loop/spec.md) |
 | 028 | Postgres + Apache AGE: docker-compose service, async driver (asyncpg), schema, migrations, init script | planned | — |
 | 029 | Learner profile module (state across sessions) | planned | — |
 | 030 | Learner error-pattern tracking | planned | — |
@@ -75,3 +75,4 @@
 | 2026-04-19 | Spec 021-voice-pipeline implemented; #021 + #022 → implemented. Package renamed `hable-ya/` → `hable_ya/`. |
 | 2026-04-19 | Spec 046-web-frontend-voice-shell drafted (scoped to Home + Session, orb variant A, no captions); #046 → in-progress. |
 | 2026-04-19 | Spec 046-web-frontend-voice-shell implemented; #046 → implemented. Backend change: added `hable_ya/pipeline/serializer.py::RawPCMSerializer` (wired into `api/routes/session.py`); Pipecat JS SDK dropped in favor of native WebSocket + AudioWorklet. |
+| 2026-04-19 | Spec 023-agent-loop drafted (bundles #023 + #024 + #025 + #027: unified per-band system prompt, REGISTER_BY_LEVEL + COLD_START content, `log_turn` tool handler with JSONL sink, HABLE_YA_TOOLS schema); #026 (persistence) deferred. |

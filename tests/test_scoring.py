@@ -1,13 +1,10 @@
 """Eval scoring deterministic checks."""
 from __future__ import annotations
 
-import pytest
-
 from eval.scoring.language import contains_english
 from eval.scoring.recast import error_repeated, recast_explicit, recast_present
 from eval.scoring.register import check_register_heuristic
 from eval.scoring.turn import _count_questions, _count_sentences, parse_tool_calls
-
 
 # ---------------------------------------------------------------------------
 # parse_tool_calls — both surface formats

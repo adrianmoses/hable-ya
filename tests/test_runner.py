@@ -8,6 +8,7 @@ catchable by manual end-to-end runs.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +21,7 @@ from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
 from hable_ya.pipeline.processors.turn_observer import HableYaTurnObserver
 from hable_ya.pipeline.runner import build_pipeline
 from hable_ya.pipeline.services import Services
+from hable_ya.runtime.observations import TurnObservationSink
 
 
 class _StubProcessor(FrameProcessor):
@@ -53,16 +55,27 @@ def fake_transport() -> MagicMock:
     return transport
 
 
+def _sink(tmp_path: Path) -> TurnObservationSink:
+    return TurnObservationSink(tmp_path / "turns.jsonl", ring_size=10)
+
+
 def test_build_pipeline_returns_pipeline(
-    fake_services: Services, fake_transport: MagicMock
+    fake_services: Services, fake_transport: MagicMock, tmp_path: Path
 ) -> None:
     context = LLMContext(messages=[{"role": "system", "content": "s"}])
-    pipeline = build_pipeline(fake_services, fake_transport, context, Settings())
+    pipeline = build_pipeline(
+        fake_services,
+        fake_transport,
+        context,
+        Settings(),
+        sink=_sink(tmp_path),
+        session_id="test",
+    )
     assert isinstance(pipeline, Pipeline)
 
 
 def test_pipeline_processor_order(
-    fake_services: Services, fake_transport: MagicMock
+    fake_services: Services, fake_transport: MagicMock, tmp_path: Path
 ) -> None:
     """The documented topology is:
 
@@ -72,7 +85,14 @@ def test_pipeline_processor_order(
     The tool handler MUST come after the LLM and strictly before the TTS.
     """
     context = LLMContext(messages=[{"role": "system", "content": "s"}])
-    pipeline = build_pipeline(fake_services, fake_transport, context, Settings())
+    pipeline = build_pipeline(
+        fake_services,
+        fake_transport,
+        context,
+        Settings(),
+        sink=_sink(tmp_path),
+        session_id="test",
+    )
 
     processors = list(pipeline.processors)
 
@@ -98,12 +118,26 @@ def test_pipeline_processor_order(
 
 
 def test_custom_processors_are_fresh_per_pipeline(
-    fake_services: Services, fake_transport: MagicMock
+    fake_services: Services, fake_transport: MagicMock, tmp_path: Path
 ) -> None:
     """Two pipelines built in the same process must not share per-session state."""
     context = LLMContext(messages=[{"role": "system", "content": "s"}])
-    p1 = build_pipeline(fake_services, fake_transport, context, Settings())
-    p2 = build_pipeline(fake_services, fake_transport, context, Settings())
+    p1 = build_pipeline(
+        fake_services,
+        fake_transport,
+        context,
+        Settings(),
+        sink=_sink(tmp_path),
+        session_id="test",
+    )
+    p2 = build_pipeline(
+        fake_services,
+        fake_transport,
+        context,
+        Settings(),
+        sink=_sink(tmp_path),
+        session_id="test",
+    )
 
     handlers_1 = [p for p in p1.processors if isinstance(p, HableYaToolHandler)]
     handlers_2 = [p for p in p2.processors if isinstance(p, HableYaToolHandler)]
