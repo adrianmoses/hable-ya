@@ -56,7 +56,8 @@
 | 044 | Kaggle writeup and public share | planned | — |
 | 045 | Multi-language support (source/target pairs beyond en→es) | planned | — |
 | 046 | Web frontend for the voice agent (connects to `/ws/session`, mic capture + audio playback; scope TBD) | implemented | [046-web-frontend-voice-shell](046-web-frontend-voice-shell/spec.md) |
-| 047 | STT quality investigation (Whisper model size, VAD tuning, `initial_prompt` priming) — current `small` model produces poor Spanish transcripts under live conditions | planned | — |
+| 047 | STT quality investigation (Whisper model size, VAD tuning, `initial_prompt` priming) — closed at medium-Whisper quality ceiling | implemented | [048-stt-tts-quality-and-latency](048-stt-tts-quality-and-latency/spec.md) ([decision](048-stt-tts-quality-and-latency/decision.md)) |
+| 048 | STT → faster-whisper `medium`, TTS → `es_ES-davefx-medium`, debug-only end-to-end latency via Pipecat `UserBotLatencyObserver` | implemented | [048-stt-tts-quality-and-latency](048-stt-tts-quality-and-latency/spec.md) ([decision](048-stt-tts-quality-and-latency/decision.md)) |
 
 ## Status Values
 
@@ -79,3 +80,5 @@
 | 2026-04-19 | Spec 023-agent-loop drafted (bundles #023 + #024 + #025 + #027: unified per-band system prompt, REGISTER_BY_LEVEL + COLD_START content, `log_turn` tool handler with JSONL sink, HABLE_YA_TOOLS schema); #026 (persistence) deferred. |
 | 2026-04-19 | Spec 023-agent-loop implemented; #023 + #024 + #025 + #027 → implemented. Unified prompt renderer in `hable_ya/pipeline/prompts/render.py` (shared with `finetune/format.py`); `log_turn` parsed to JSONL sink + ring buffer + `GET /dev/observations`; disabled Gemma thinking mode via `chat_template_kwargs.enable_thinking=false`. |
 | 2026-04-19 | Added #047 STT quality investigation (current Whisper `small` produces poor Spanish transcripts under live conditions). |
+| 2026-04-20 | Spec 048-stt-tts-quality-and-latency drafted (bundles #047 resolution + #048: Whisper `medium`, Piper medium voice, debug-only end-to-end latency probe); #047 + #048 → in-progress. |
+| 2026-04-20 | Spec 048-stt-tts-quality-and-latency implemented; #047 + #048 → implemented. Reused Pipecat's built-in `UserBotLatencyObserver` instead of a custom FrameProcessor (observers sit outside the frame chain). STT quality accepted at the medium-Whisper ceiling. |

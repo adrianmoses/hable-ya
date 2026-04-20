@@ -15,11 +15,11 @@ class Settings(BaseSettings):
     llm_model_name: str = "gemma-4-e4b-finetuned"
     llm_max_tokens: int = 150
 
-    whisper_model: str = "small"
+    whisper_model: str = "medium"
     whisper_device: str = "cuda"
     whisper_compute_type: str = "float16"
 
-    piper_voice: str = "es_ES-carlfm-x_low"
+    piper_voice: str = "es_ES-davefx-medium"
     piper_model_dir: Path = Path.home() / "piper_models"
 
     smart_turn_stop_secs: float = 4.0
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     runtime_turns_path: Path = Path("runtime_turns.jsonl")
     observation_ring_size: int = 100
     dev_endpoints_enabled: bool = False
+    latency_debug: bool = False
 
 
 settings = Settings()
