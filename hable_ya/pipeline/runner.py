@@ -8,12 +8,16 @@ processors) is built fresh inside the call.
 """
 from __future__ import annotations
 
+import logging
+
 from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import (
     LocalSmartTurnAnalyzerV3,
 )
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.observers.base_observer import BaseObserver
+from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -30,6 +34,8 @@ from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
 from hable_ya.pipeline.processors.turn_observer import HableYaTurnObserver
 from hable_ya.pipeline.services import Services
 from hable_ya.runtime.observations import TurnObservationSink
+
+latency_logger = logging.getLogger("hable_ya.latency")
 
 
 def default_learner(settings: Settings) -> dict[str, object]:
@@ -100,6 +106,17 @@ def build_pipeline_task(
         sink=sink,
         session_id=session_id,
     )
+
+    observers: list[BaseObserver] | None = None
+    if settings.latency_debug:
+        observer = UserBotLatencyObserver()  # type: ignore[no-untyped-call]
+
+        @observer.event_handler("on_latency_measured")  # type: ignore[untyped-decorator]
+        async def _log_latency(_obs: UserBotLatencyObserver, latency_s: float) -> None:
+            latency_logger.info("end_to_end_ms=%d", int(latency_s * 1000))
+
+        observers = [observer]
+
     return PipelineTask(
         pipeline,
         params=PipelineParams(
@@ -108,5 +125,6 @@ def build_pipeline_task(
             audio_in_sample_rate=settings.audio_sample_rate,
             audio_out_sample_rate=settings.audio_sample_rate,
         ),
+        observers=observers,
         idle_timeout_secs=None,
     )
