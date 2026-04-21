@@ -6,7 +6,16 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     model_config = {"env_prefix": "HABLE_YA_"}
 
-    db_path: str = "./hable_ya.db"
+    database_url: str = "postgresql://hable_ya:hable_ya@localhost:5433/hable_ya"
+    db_pool_min_size: int = 1
+    db_pool_max_size: int = 4
+    db_pool_timeout_seconds: float = 5.0
+
+    @property
+    def async_database_url(self) -> str:
+        return self.database_url.replace(
+            "postgresql://", "postgresql+asyncpg://", 1
+        )
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "info"
