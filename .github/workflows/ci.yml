@@ -13,6 +13,22 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    services:
+      postgres:
+        image: apache/age:release_PG18_1.7.0
+        env:
+          POSTGRES_USER: hable_ya
+          POSTGRES_PASSWORD: hable_ya
+          POSTGRES_DB: hable_ya
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hable_ya"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +48,17 @@ jobs:
       - name: Download Spanish spaCy model
         run: uv run python -m spacy download es_core_news_sm
 
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -U hable_ya; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres did not become ready in 30s" >&2
+          exit 1
+
       # Ruff/mypy are scoped to the directories whose lint/type debt has been
       # paid down (hable_ya, api, and the new tests from spec 021). The rest of
       # the repo (eval/, finetune/, scripts/fixtures/, older tests/) has
@@ -44,6 +71,9 @@ jobs:
             tests/test_runner.py \
             tests/test_health.py \
             tests/test_prompts.py \
+            tests/test_db.py \
+            tests/test_init_db.py \
+            tests/conftest.py \
             scripts/voice_client.py
 
       - name: Mypy
@@ -53,7 +83,12 @@ jobs:
             tests/test_tool_handler.py \
             tests/test_runner.py \
             tests/test_health.py \
-            tests/test_prompts.py
+            tests/test_prompts.py \
+            tests/test_db.py \
+            tests/test_init_db.py \
+            tests/conftest.py
 
       - name: Pytest
+        env:
+          HABLE_YA_DATABASE_URL: postgresql://hable_ya:hable_ya@localhost:5432/hable_ya
         run: uv run pytest tests/ -v

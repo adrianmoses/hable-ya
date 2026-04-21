@@ -37,7 +37,7 @@
 | 025 | Tool handler consuming `log_turn` calls from LLM output | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
 | 026 | Turn observer persisting turn observations | planned | — |
 | 027 | `HABLE_YA_TOOLS` schema definition (log_turn + any others) | implemented | [023-agent-loop](023-agent-loop/spec.md) ([decision](023-agent-loop/decision.md)) |
-| 028 | Postgres + Apache AGE: docker-compose service, async driver (asyncpg), schema, migrations, init script | planned | — |
+| 028 | Postgres + Apache AGE: docker-compose service, async driver (asyncpg), schema, migrations, init script | implemented | [028-postgres-age-setup](028-postgres-age-setup/spec.md) ([decision](028-postgres-age-setup/decision.md)) |
 | 029 | Learner profile module (state across sessions) | planned | — |
 | 030 | Learner error-pattern tracking | planned | — |
 | 031 | Learner vocabulary tracking | planned | — |
@@ -50,7 +50,7 @@
 | 038 | Latency benchmark script | planned | — |
 | 039 | Concurrency benchmark script (referenced in README, file absent) | planned | — |
 | 040 | Session export script | planned | — |
-| 041 | Database init script | planned | — |
+| 041 | Database init script | implemented | [028-postgres-age-setup](028-postgres-age-setup/spec.md) ([decision](028-postgres-age-setup/decision.md)) |
 | 042 | Model artifact / eval-result registry (link checkpoints to their datasets and scores) | planned | — |
 | 043 | On-device deployment target (device class, OS, memory budget) | planned | — |
 | 044 | Kaggle writeup and public share | planned | — |
@@ -82,3 +82,5 @@
 | 2026-04-19 | Added #047 STT quality investigation (current Whisper `small` produces poor Spanish transcripts under live conditions). |
 | 2026-04-20 | Spec 048-stt-tts-quality-and-latency drafted (bundles #047 resolution + #048: Whisper `medium`, Piper medium voice, debug-only end-to-end latency probe); #047 + #048 → in-progress. |
 | 2026-04-20 | Spec 048-stt-tts-quality-and-latency implemented; #047 + #048 → implemented. Reused Pipecat's built-in `UserBotLatencyObserver` instead of a custom FrameProcessor (observers sit outside the frame chain). STT quality accepted at the medium-Whisper ceiling. |
+| 2026-04-21 | Spec 028-postgres-age-setup drafted (bundles #028 + #041: `apache/age:release_PG18_1.7.0` compose service, asyncpg runtime pool with AGE bootstrap, alembic async migrations with raw-SQL `op.execute` revisions, `scripts/init_db.py`; plumbing only — no learner schema); #028 + #041 → in-progress. Learner-model schema deferred to its own spec (#029–#033). |
+| 2026-04-21 | Spec 028-postgres-age-setup implemented; #028 + #041 → implemented. Divergences from spec (captured in the decision record): host port remapped `5432 → 5433` (system-Postgres collision), PG18 volume at `/var/lib/postgresql` (not `/data`), `ALTER ROLE` in migration so `search_path` survives asyncpg's `RESET ALL`, pytest-asyncio session loop scope set globally, `::name` cast required for `drop_graph`. `Settings.async_database_url` property centralises the `postgresql+asyncpg://` rewrite. |

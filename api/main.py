@@ -21,6 +21,12 @@ from fastapi import FastAPI  # noqa: E402
 from api.routes.health import router as health_router  # noqa: E402
 from api.routes.session import router as session_router  # noqa: E402
 from hable_ya.config import settings  # noqa: E402
+from hable_ya.db import (  # noqa: E402
+    HableYaDB,
+    close_pool,
+    open_pool,
+    upgrade_to_head,
+)
 from hable_ya.pipeline.services import load_services, warmup_llm  # noqa: E402
 from hable_ya.runtime.observations import TurnObservationSink  # noqa: E402
 
@@ -42,10 +48,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.runtime_turns_path,
         settings.observation_ring_size,
     )
-    await warmup_llm(settings)
-    app.state.ready = True
-    logger.info("hable-ya ready on %s:%d", settings.host, settings.port)
-    yield
+    await upgrade_to_head()
+    app.state.db_pool = await open_pool()
+    app.state.db = HableYaDB(app.state.db_pool)
+    try:
+        await warmup_llm(settings)
+        app.state.ready = True
+        logger.info("hable-ya ready on %s:%d", settings.host, settings.port)
+        yield
+    finally:
+        await close_pool(app.state.db_pool)
 
 
 app = FastAPI(title="hable-ya", lifespan=lifespan)
