@@ -30,6 +30,7 @@ from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from hable_ya.config import Settings
+from hable_ya.learner.ingest import TurnIngestService
 from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
 from hable_ya.pipeline.processors.turn_observer import HableYaTurnObserver
 from hable_ya.pipeline.services import Services
@@ -51,6 +52,7 @@ def build_pipeline(
     *,
     sink: TurnObservationSink,
     session_id: str,
+    ingest: TurnIngestService | None = None,
 ) -> Pipeline:
     """Assemble the voice pipeline.
 
@@ -72,7 +74,7 @@ def build_pipeline(
     aggregators = LLMContextAggregatorPair(context, user_params=user_params)
 
     turn_observer = HableYaTurnObserver()
-    tool_handler = HableYaToolHandler(sink, session_id)
+    tool_handler = HableYaToolHandler(sink, session_id, ingest=ingest)
 
     return Pipeline(
         [
@@ -97,6 +99,7 @@ def build_pipeline_task(
     *,
     sink: TurnObservationSink,
     session_id: str,
+    ingest: TurnIngestService | None = None,
 ) -> PipelineTask:
     pipeline = build_pipeline(
         services,
@@ -105,6 +108,7 @@ def build_pipeline_task(
         settings,
         sink=sink,
         session_id=session_id,
+        ingest=ingest,
     )
 
     observers: list[BaseObserver] | None = None

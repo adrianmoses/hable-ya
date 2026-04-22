@@ -41,6 +41,39 @@ async def test_upgrade_to_head_idempotent(db_conn: asyncpg.Connection) -> None:
     assert before == after
 
 
+async def test_learner_schema_tables_exist(db_conn: asyncpg.Connection) -> None:
+    expected = {
+        "learner_profile",
+        "sessions",
+        "turns",
+        "error_observations",
+        "error_counts",
+        "vocabulary_items",
+    }
+    rows = await db_conn.fetch(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+    )
+    present = {r["tablename"] for r in rows}
+    assert expected <= present, f"missing tables: {expected - present}"
+
+
+async def test_learner_profile_seed_row(db_conn: asyncpg.Connection) -> None:
+    row = await db_conn.fetchrow(
+        "SELECT id, band, sessions_completed FROM learner_profile WHERE id = 1"
+    )
+    assert row is not None
+    assert row["id"] == 1
+    assert row["band"] == "A2"
+    assert row["sessions_completed"] == 0
+
+
+async def test_learner_knowledge_graph_exists(db_conn: asyncpg.Connection) -> None:
+    row = await db_conn.fetchrow(
+        "SELECT name FROM ag_catalog.ag_graph WHERE name = 'learner_knowledge'"
+    )
+    assert row is not None
+
+
 async def test_age_smoke_create_graph_and_cypher(db_pool: asyncpg.Pool) -> None:
     graph = "smoke_test_graph"
     async with db_pool.acquire() as conn:

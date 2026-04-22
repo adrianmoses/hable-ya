@@ -42,5 +42,11 @@ class Settings(BaseSettings):
     dev_endpoints_enabled: bool = False
     latency_debug: bool = False
 
+    # Learner-model (spec 029) tunables.
+    profile_window_turns: int = 20  # rolling window for L1_reliance / fluency
+    profile_top_errors: int = 3     # top-N error categories surfaced in prompt
+    profile_top_vocab: int = 5      # top-N vocab lemmas surfaced in prompt
+    theme_cooldown: int = 3         # recent themes excluded from selection
+
 
 settings = Settings()

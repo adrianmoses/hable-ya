@@ -192,6 +192,85 @@ async def test_non_llm_frames_pass_through(sink: TurnObservationSink) -> None:
     assert sink.missing == 0
 
 
+class _RecordingIngest:
+    """Drop-in for TurnIngestService: captures ingest() + start_session calls."""
+
+    def __init__(self, fail: bool = False) -> None:
+        self.calls: list[object] = []
+        self.fail = fail
+
+    async def ingest(self, obs: object) -> None:
+        self.calls.append(obs)
+        if self.fail:
+            raise RuntimeError("simulated DB outage")
+
+    async def start_session(self, **kwargs: object) -> None:  # unused here
+        pass
+
+    async def end_session(self, **kwargs: object) -> None:  # unused here
+        pass
+
+
+async def test_ingest_called_on_happy_path(sink: TurnObservationSink) -> None:
+    ingest = _RecordingIngest()
+    handler = HableYaToolHandler(sink, session_id="si1", ingest=ingest)  # type: ignore[arg-type]
+    tool_call = (
+        'log_turn({"learner_utterance": "Hola.", "errors": [], '
+        '"fluency_signal": "moderate", "L1_used": false})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame("Hola. "),
+        LLMTextFrame(tool_call),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+    assert len(ingest.calls) == 1
+    assert sink.ingest_failed == 0
+
+
+async def test_ingest_failure_increments_counter_and_keeps_sink(
+    sink: TurnObservationSink,
+) -> None:
+    ingest = _RecordingIngest(fail=True)
+    handler = HableYaToolHandler(sink, session_id="si2", ingest=ingest)  # type: ignore[arg-type]
+    tool_call = (
+        'log_turn({"learner_utterance": "Hola.", "errors": [], '
+        '"fluency_signal": "moderate", "L1_used": false})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame(tool_call),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+    # The JSONL sink still captured the observation — graceful degradation.
+    assert len(sink.recent()) == 1
+    assert sink.ingest_failed == 1
+    assert sink.missing == 0
+
+
+async def test_ingest_not_called_on_malformed_payload(
+    sink: TurnObservationSink,
+) -> None:
+    ingest = _RecordingIngest()
+    handler = HableYaToolHandler(sink, session_id="si3", ingest=ingest)  # type: ignore[arg-type]
+    bad = (
+        'log_turn({"learner_utterance": "Hola.", '
+        '"errors": "not-a-list", '
+        '"fluency_signal": "moderate", "L1_used": false})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame(bad),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+    assert ingest.calls == []
+    assert sink.missing == 1
+    assert sink.ingest_failed == 0
+
+
 async def test_unclosed_tool_call_counts_as_missing(
     sink: TurnObservationSink,
 ) -> None:
