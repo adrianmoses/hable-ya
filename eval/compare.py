@@ -4,12 +4,12 @@ Usage::
 
     python -m eval.compare baseline.json finetuned.json
 """
+
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 from rich.console import Console
 from rich.table import Table
@@ -75,8 +75,12 @@ def compare(a: EvalOutput, b: EvalOutput) -> None:
 
     # --- Header ---
     console.print()
-    console.print(f"[bold]Run A:[/bold] {a.run_id[:8]}  ({a.timestamp[:10]})  n={len(a.results)}")
-    console.print(f"[bold]Run B:[/bold] {b.run_id[:8]}  ({b.timestamp[:10]})  n={len(b.results)}")
+    console.print(
+        f"[bold]Run A:[/bold] {a.run_id[:8]}  ({a.timestamp[:10]})  n={len(a.results)}"
+    )
+    console.print(
+        f"[bold]Run B:[/bold] {b.run_id[:8]}  ({b.timestamp[:10]})  n={len(b.results)}"
+    )
     console.print()
 
     # --- Table 1: Overall + Per-Dimension ---
@@ -171,7 +175,9 @@ def compare(a: EvalOutput, b: EvalOutput) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare two eval output JSONs")
     parser.add_argument("run_a", help="Path to first eval output JSON (baseline)")
-    parser.add_argument("run_b", help="Path to second eval output JSON (e.g., finetuned)")
+    parser.add_argument(
+        "run_b", help="Path to second eval output JSON (e.g., finetuned)"
+    )
     args = parser.parse_args()
 
     try:

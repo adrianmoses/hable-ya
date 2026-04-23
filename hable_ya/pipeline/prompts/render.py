@@ -6,6 +6,7 @@ workstreams (`finetune.format`, `eval.run_eval`). Keeping these in lockstep
 means any change to register guidance, FORBIDDEN phrases, or the canonical
 log_turn shape lands everywhere at once.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -165,9 +166,7 @@ def render_system_prompt(
     )
     for phrase in FORBIDDEN_CORRECTION_PHRASES:
         lines.append(f'  "{phrase}"')
-    lines.append(
-        "Also never use the Spanish word 'error' when talking to the learner."
-    )
+    lines.append("Also never use the Spanish word 'error' when talking to the learner.")
 
     lines.extend(
         [
@@ -238,17 +237,9 @@ def normalize_error_item(
             or fallback_type
             or ""
         )
-        produced = (
-            raw.get("produced")
-            or raw.get("error_form")
-            or raw.get("form")
-            or ""
-        )
+        produced = raw.get("produced") or raw.get("error_form") or raw.get("form") or ""
         target = (
-            raw.get("target")
-            or raw.get("correct_form")
-            or raw.get("correction")
-            or ""
+            raw.get("target") or raw.get("correct_form") or raw.get("correction") or ""
         )
         if not err_type and not produced:
             return None
@@ -290,9 +281,7 @@ def normalize_log_turn_args(
     """
     # Anchor on the conversation's last user turn — that's the source of truth
     # for ``eval/scoring/turn.py`` (tool_args_correct requires exact match).
-    utterance = _last_user_utterance(fixture) or raw_args.get(
-        "learner_utterance", ""
-    )
+    utterance = _last_user_utterance(fixture) or raw_args.get("learner_utterance", "")
 
     source_errors: list[Any] = []
     for key in ("errors", "errors_observed", "errors_detected"):

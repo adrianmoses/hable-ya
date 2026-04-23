@@ -3,6 +3,7 @@
 Pure functions — no I/O in core. CLI mode at the bottom walks a directory of
 pending fixtures and prints a pass/fail report per category.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,6 +32,7 @@ def _produced_form_leaks(produced: str, response: str) -> bool:
     pattern = r"\b" + re.escape(produced) + r"\b"
     return re.search(pattern, response, re.IGNORECASE | re.UNICODE) is not None
 
+
 EXPLICIT_CORRECTION_PATTERNS = [
     r"pero\s+es\b",
     r"se\s+dice\b",
@@ -44,6 +46,7 @@ EXPLICIT_CORRECTION_PATTERNS = [
 ]
 _EXPLICIT_RE = re.compile("|".join(EXPLICIT_CORRECTION_PATTERNS), re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"[.!?]+")
+
 
 @dataclass
 class ValidationResult:
@@ -62,7 +65,8 @@ def _sentence_count(text: str) -> int:
 
 
 def _is_english(text: str) -> bool:
-    from langdetect import detect, LangDetectException
+    from langdetect import LangDetectException, detect
+
     try:
         return detect(text) == "en"
     except LangDetectException:
@@ -131,9 +135,7 @@ def universal_checks(fixture: Fixture) -> list[str]:
                 if not target:
                     errs.append(f"errors[{idx}].target is empty")
                 if produced and _produced_form_leaks(produced, response):
-                    errs.append(
-                        f"error form '{produced}' appears in response_text"
-                    )
+                    errs.append(f"error form '{produced}' appears in response_text")
 
     if _is_english(response) and not fixture.metadata.L1_used:
         errs.append("response_text detected as English")
@@ -193,7 +195,8 @@ def _check_cold_start(fixture: ColdStartFixture) -> list[str]:
     pl = fixture.expected_profile_update.production_level
     if not (pl.min <= fixture.true_level <= pl.max):
         errs.append(
-            f"true_level {fixture.true_level} outside expected range [{pl.min}, {pl.max}]"
+            f"true_level {fixture.true_level} outside expected range "
+            f"[{pl.min}, {pl.max}]"
         )
     if not fixture.expected_profile_update.is_calibrated:
         errs.append("is_calibrated must be true after 4 turns")
@@ -277,7 +280,9 @@ def _iter_pending(root: Path) -> list[tuple[str, Path]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("path", type=Path, help="directory holding per-category subdirs")
+    parser.add_argument(
+        "path", type=Path, help="directory holding per-category subdirs"
+    )
     parser.add_argument("--report", action="store_true", help="print summary table")
     args = parser.parse_args()
 

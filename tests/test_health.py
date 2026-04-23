@@ -4,6 +4,7 @@ Uses TestClient with lifespan. Services, LLM warmup, and DB calls are patched
 so the test doesn't need CUDA, model downloads, a live llama.cpp endpoint, or
 Postgres.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator

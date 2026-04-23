@@ -1,4 +1,5 @@
 """single_error_recast — scaled fixture generation with variance axes."""
+
 from __future__ import annotations
 
 from eval.fixtures.schema import CEFRBand
@@ -7,9 +8,16 @@ from . import ERROR_TYPES_BY_BAND
 from ._variance import pick_surface_form, render_axes_block, sample_axes
 
 DOMAINS = [
-    "food_and_cooking", "family_and_friends", "work_and_study",
-    "travel_and_transport", "weekend_plans", "hobbies_and_music",
-    "health_and_sports", "city_life", "weather_and_seasons", "shopping",
+    "food_and_cooking",
+    "family_and_friends",
+    "work_and_study",
+    "travel_and_transport",
+    "weekend_plans",
+    "hobbies_and_music",
+    "health_and_sports",
+    "city_life",
+    "weather_and_seasons",
+    "shopping",
 ]
 
 
@@ -24,9 +32,7 @@ def build_user_prompts(n: int, band: CEFRBand) -> list[str]:
         difficulty, fluency, turn_count = sample_axes(band, i)
         surface = pick_surface_form(error, band, i)
 
-        surface_line = (
-            f"Specific realisation to target: {surface}\n" if surface else ""
-        )
+        surface_line = f"Specific realisation to target: {surface}\n" if surface else ""
 
         prompts.append(
             f"""Generate ONE `single_error_recast` fixture for CEFR band {band}.

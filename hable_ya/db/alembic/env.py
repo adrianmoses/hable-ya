@@ -5,6 +5,7 @@ rewrites it to the SQLAlchemy async form (`postgresql+asyncpg://`). No ORM
 models — `target_metadata = None` disables autogenerate; revisions are
 hand-authored with `op.execute(...)`.
 """
+
 import asyncio
 from logging.config import fileConfig
 

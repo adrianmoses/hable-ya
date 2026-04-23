@@ -1,17 +1,34 @@
 """error_pattern_threshold — 20 fixtures (4 per band)."""
+
 from __future__ import annotations
 
 from eval.fixtures.schema import CEFRBand
 
 SCENARIOS = [
-    ("third_occurrence", 3, True,
-     "Third time the same error appears across the conversation. Call log_error."),
-    ("second_occurrence", 2, False,
-     "Only the second time — below threshold. Do NOT call log_error."),
-    ("different_contexts", 3, True,
-     "Three different sentences with the same underlying error pattern. Call log_error."),
-    ("declining_severity", 3, True,
-     "Three occurrences but the learner is improving. Call log_error with a trend note in arguments."),
+    (
+        "third_occurrence",
+        3,
+        True,
+        "Third time the same error appears across the conversation. Call log_error.",
+    ),
+    (
+        "second_occurrence",
+        2,
+        False,
+        "Only the second time — below threshold. Do NOT call log_error.",
+    ),
+    (
+        "different_contexts",
+        3,
+        True,
+        "Three different sentences with the same underlying error pattern. Call log_error.",
+    ),
+    (
+        "declining_severity",
+        3,
+        True,
+        "Three occurrences but the learner is improving. Call log_error with a trend note in arguments.",
+    ),
 ]
 
 

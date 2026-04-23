@@ -5,6 +5,7 @@ session. Persists each observation as one JSON line to a configurable path
 (dev artifact; spec #026 replaces this with the durable learner DB) and keeps
 a bounded ring buffer in memory for ``GET /dev/observations``.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -64,6 +65,11 @@ class TurnObservationSink:
         self._buffer: deque[TurnObservation] = deque(maxlen=ring_size)
         self._lock = asyncio.Lock()
         self.missing: int = 0
+        # Incremented by HableYaToolHandler when the post-`log_turn` learner
+        # DB write fails (spec 029). The JSONL line still appended; this
+        # counter surfaces in /dev/observations as a graceful-degradation
+        # signal so the researcher notices drift between sink and DB.
+        self.ingest_failed: int = 0
 
     @property
     def path(self) -> Path:

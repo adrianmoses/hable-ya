@@ -21,6 +21,4 @@ async def health(request: Request) -> JSONResponse:
                 "llm_backend": settings.llama_cpp_url,
             },
         )
-    return JSONResponse(
-        content={"status": "ok", "llm_backend": settings.llama_cpp_url}
-    )
+    return JSONResponse(content={"status": "ok", "llm_backend": settings.llama_cpp_url})

@@ -1291,6 +1291,7 @@ dependencies = [
     { name = "piper-tts" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
+    { name = "spacy" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "tenacity" },
     { name = "uvicorn", extra = ["standard"] },
@@ -1310,7 +1311,6 @@ eval = [
     { name = "anthropic" },
     { name = "pandas" },
     { name = "rich" },
-    { name = "spacy" },
 ]
 finetune = [
     { name = "anthropic" },
@@ -1356,7 +1356,7 @@ requires-dist = [
     { name = "rich", marker = "extra == 'dev'", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'eval'", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
-    { name = "spacy", marker = "extra == 'eval'", specifier = ">=3.7" },
+    { name = "spacy", specifier = ">=3.7" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.0" },
     { name = "tenacity", specifier = ">=9.0.0" },
     { name = "torch", marker = "extra == 'finetune'", specifier = ">=2.5.0" },

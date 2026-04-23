@@ -20,6 +20,7 @@ Two stages, each independently runnable:
 Default behaviour with no flags is a dry-run report. Pass ``--apply`` and/or
 ``--build-batch <path>`` to actually do work.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -170,7 +171,7 @@ def _process_fixture(data: dict[str, Any], category: str, path: Path) -> Outcome
             field_renames.extend(fr)
             unmapped_types.extend(un)
             if isinstance(raw, dict):
-                old_t = (raw.get("type") or raw.get("pattern") or "")
+                old_t = raw.get("type") or raw.get("pattern") or ""
                 if old_t and coerced["type"] and old_t != coerced["type"]:
                     type_renames.append((old_t, coerced["type"]))
             if not coerced["type"]:
@@ -178,16 +179,18 @@ def _process_fixture(data: dict[str, Any], category: str, path: Path) -> Outcome
                 continue
             canonical_errors.append(coerced)
             if not coerced["produced"] or not coerced["target"]:
-                needs_backfill.append({
-                    "fixture_id": data.get("id", path.stem),
-                    "category": category,
-                    "type": coerced["type"],
-                    "learner_utterance": args.get("learner_utterance", ""),
-                    "recast_form": data.get("expected", {}).get("recast_form")
-                                   or data.get("metadata", {}).get("expected_recast"),
-                    "current_produced": coerced["produced"],
-                    "current_target": coerced["target"],
-                })
+                needs_backfill.append(
+                    {
+                        "fixture_id": data.get("id", path.stem),
+                        "category": category,
+                        "type": coerced["type"],
+                        "learner_utterance": args.get("learner_utterance", ""),
+                        "recast_form": data.get("expected", {}).get("recast_form")
+                        or data.get("metadata", {}).get("expected_recast"),
+                        "current_produced": coerced["produced"],
+                        "current_target": coerced["target"],
+                    }
+                )
         args["errors"] = canonical_errors
 
     return Outcome(
@@ -285,8 +288,9 @@ def main() -> int:
             unmapped_counter[t] += 1
         backfill_items.extend(outcome.needs_backfill)
 
-        if args.apply and (outcome.type_renames or outcome.key_renames
-                           or outcome.field_renames):
+        if args.apply and (
+            outcome.type_renames or outcome.key_renames or outcome.field_renames
+        ):
             path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
     # ---- Report ----
@@ -304,8 +308,10 @@ def main() -> int:
     for t, n in unmapped_counter.most_common():
         print(f"  {t}: {n}")
     print()
-    print(f"== entries still missing produced/target after mapping: "
-          f"{len(backfill_items)} ==")
+    print(
+        f"== entries still missing produced/target after mapping: "
+        f"{len(backfill_items)} =="
+    )
 
     mode = "APPLIED" if args.apply else "DRY-RUN"
     print(f"\nlocal mapping stage: {mode}")
@@ -315,7 +321,10 @@ def main() -> int:
         args.build_batch.parent.mkdir(parents=True, exist_ok=True)
         args.build_batch.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
         print(f"\nwrote {len(payload)} batch requests → {args.build_batch}")
-        print("submit with the anthropic SDK separately; this script does NOT call the API.")
+        print(
+            "submit with the anthropic SDK separately; "
+            "this script does NOT call the API."
+        )
 
     return 0
 

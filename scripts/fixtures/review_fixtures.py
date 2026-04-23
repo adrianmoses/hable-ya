@@ -8,6 +8,7 @@ to ``_approved/`` or ``_rejected/`` accordingly. Progress is persisted in
 Use ``--non-interactive`` if the human has already hand-sorted files between
 staging directories — this just re-validates whatever landed in ``_approved/``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,7 +67,9 @@ def _move(src: Path, dest_root: Path, category: str) -> Path:
     return dest
 
 
-def _render(console, fixture_path: Path, category: str, idx: int, total: int) -> list[str]:
+def _render(
+    console, fixture_path: Path, category: str, idx: int, total: int
+) -> list[str]:
     from rich.panel import Panel
     from rich.syntax import Syntax
 
@@ -80,9 +83,17 @@ def _render(console, fixture_path: Path, category: str, idx: int, total: int) ->
 
     body = json.dumps(data, indent=2, ensure_ascii=False)
     title = f"[{idx}/{total}] {category} / {fixture_path.stem}"
-    console.print(Panel(Syntax(body, "json", theme="ansi_dark", word_wrap=True), title=title))
+    console.print(
+        Panel(Syntax(body, "json", theme="ansi_dark", word_wrap=True), title=title)
+    )
     if warnings:
-        console.print(Panel("\n".join(f"• {w}" for w in warnings), title="validation", style="yellow"))
+        console.print(
+            Panel(
+                "\n".join(f"• {w}" for w in warnings),
+                title="validation",
+                style="yellow",
+            )
+        )
     return warnings
 
 
@@ -161,7 +172,9 @@ def non_interactive() -> int:
                     ok += 1
                 else:
                     bad += 1
-                    console.print(f"[red]FAIL[/red] {cat_dir.name}/{f.name}: {result.errors}")
+                    console.print(
+                        f"[red]FAIL[/red] {cat_dir.name}/{f.name}: {result.errors}"
+                    )
             except Exception as exc:
                 bad += 1
                 console.print(f"[red]SCHEMA[/red] {cat_dir.name}/{f.name}: {exc}")
@@ -170,7 +183,7 @@ def non_interactive() -> int:
 
 
 def auto_approve() -> int:
-    """Move every validator-passing pending fixture to _approved/, the rest to _rejected/.
+    """Move validator-passing pending fixtures to _approved/; the rest to _rejected/.
 
     Bypasses the TUI for scale generation. Each rejected fixture gets a sibling
     ``<id>.reason.json`` with the validator errors and (if available) the

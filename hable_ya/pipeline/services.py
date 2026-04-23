@@ -4,6 +4,7 @@ Constructed once at process startup and reused across WebSocket sessions.
 Call `load_services(settings)` from a FastAPI `lifespan` context, then call
 `warmup_llm(settings)` to wait for the llama.cpp endpoint to accept requests.
 """
+
 from __future__ import annotations
 
 import logging

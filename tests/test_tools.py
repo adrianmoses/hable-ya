@@ -1,4 +1,5 @@
 """HABLE_YA_TOOLS schema tests."""
+
 from __future__ import annotations
 
 import pytest

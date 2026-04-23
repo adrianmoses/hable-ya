@@ -4,6 +4,7 @@ Logs transcription frames (user turns) and LLM full-response-end frames
 (assistant turns) to stdout so a live session produces a visible trace. Spec
 026 replaces this with durable persistence against the learner DB.
 """
+
 from __future__ import annotations
 
 import logging

@@ -103,6 +103,56 @@ python -m finetune.validate
 
 Outputs JSONL to `finetune/datasets/`. Training itself runs in [`notebooks/gemma4_finetune.ipynb`](notebooks/gemma4_finetune.ipynb) via Unsloth.
 
+### Inspect the learner model
+
+The db is exposed on host port `5433` (compose maps `5433:5432` to avoid colliding
+with a system Postgres). Creds match `docker-compose.yml`.
+
+```bash
+PGPASSWORD=hable_ya psql -h localhost -p 5433 -U hable_ya -d hable_ya
+# or, via the running container:
+docker compose exec db psql -U hable_ya -d hable_ya
+```
+
+Relational tables:
+
+```sql
+-- Profile snapshot (L1 reliance, fluency, error patterns, CEFR band)
+SELECT * FROM learner_profile;
+
+-- Sessions
+SELECT * FROM sessions ORDER BY started_at DESC LIMIT 5;
+
+-- Recent turns (log_turn observations land here)
+SELECT id, session_id, created_at, cefr_band, l1_reliance_score
+FROM turns ORDER BY created_at DESC LIMIT 20;
+
+-- Error patterns accumulated across sessions
+SELECT * FROM error_counts ORDER BY count DESC LIMIT 20;
+
+-- Vocabulary exposure
+SELECT * FROM vocabulary_items ORDER BY last_seen_at DESC LIMIT 20;
+```
+
+Knowledge graph (Apache AGE — graph name is `learner_knowledge`):
+
+```sql
+-- List graphs in the database
+SELECT name FROM ag_catalog.ag_graph;
+
+-- AGE functions need ag_catalog on the search_path
+SET search_path = ag_catalog, "$user", public;
+
+-- Peek at nodes
+SELECT * FROM cypher('learner_knowledge', $$ MATCH (n) RETURN n LIMIT 10 $$)
+AS (n agtype);
+
+-- Node counts by label
+SELECT * FROM cypher('learner_knowledge', $$
+  MATCH (n) RETURN label(n) AS label, count(*) AS n
+$$) AS (label agtype, n agtype);
+```
+
 ## Development
 
 ```bash

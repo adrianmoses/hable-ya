@@ -1,4 +1,5 @@
 """mimicry_cycle — 15 fixtures (A1 only, 5 per stage)."""
+
 from __future__ import annotations
 
 from eval.fixtures.schema import CEFRBand

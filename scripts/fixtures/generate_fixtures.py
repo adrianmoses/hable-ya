@@ -4,6 +4,7 @@ One batch per (category) submits all band requests together, using prompt
 caching on the shared system prefix. Results land in
 ``eval/fixtures/_pending/<category>/<id>.json`` after validation.
 """
+
 from __future__ import annotations
 
 import argparse

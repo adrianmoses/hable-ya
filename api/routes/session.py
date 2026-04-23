@@ -8,6 +8,7 @@ processors) is built fresh inside the handler.
 Connection is refused with code 1013 ("try again later") if the app is still
 warming up, so clients don't wait indefinitely on a dead pipeline.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,12 +23,23 @@ from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketTransport,
 )
 
-from hable_ya.pipeline.prompts.builder import build_system_prompt
+from hable_ya.pipeline.prompts.builder import build_session_prompt
 from hable_ya.pipeline.runner import build_pipeline_task, default_learner
 from hable_ya.pipeline.serializer import RawPCMSerializer
 
 logger = logging.getLogger("hable_ya.api.session")
 router = APIRouter()
+
+
+async def _query_recent_theme_domains(pool: object, limit: int = 3) -> list[str]:
+    async with pool.acquire() as conn:  # type: ignore[attr-defined]
+        rows = await conn.fetch(
+            "SELECT theme_domain FROM sessions "
+            "WHERE theme_domain IS NOT NULL "
+            "ORDER BY started_at DESC LIMIT $1",
+            limit,
+        )
+    return [r["theme_domain"] for r in rows]
 
 
 @router.websocket("/ws/session")
@@ -44,16 +56,23 @@ async def session_ws(websocket: WebSocket) -> None:
     settings = app.state.settings
     services = app.state.services
     sink = app.state.observation_sink
+    ingest = getattr(app.state, "ingest", None)
+    pool = getattr(app.state, "db_pool", None)
 
     learner = default_learner(settings)
+    # Resolve recent_domains from `sessions` (empty on first run); build the
+    # system prompt against the live profile + cooldown-aware theme choice.
     # The fine-tuned Gemma is trained to emit plain-text `log_turn(...)` on its
-    # own; wiring HABLE_YA_TOOLS here puts llama.cpp in grammar-constrained
-    # tool-call mode and suppresses the Spanish reply entirely. The text-form
-    # tool call works without it. HABLE_YA_TOOLS lives in hable_ya/tools/schema.py
-    # as documentation of the payload shape; it's not injected into the LLM.
-    context = LLMContext(
-        messages=[{"role": "system", "content": build_system_prompt(learner)}],
+    # own; HABLE_YA_TOOLS is not injected into the LLM — see
+    # hable_ya/tools/schema.py for the documented payload shape.
+    recent_domains = await _query_recent_theme_domains(pool) if pool is not None else []
+    session_prompt = await build_session_prompt(
+        learner, pool=pool, recent_domains=recent_domains
     )
+    context = LLMContext(
+        messages=[{"role": "system", "content": session_prompt.text}],
+    )
+
     transport = FastAPIWebsocketTransport(
         websocket,
         FastAPIWebsocketParams(
@@ -74,7 +93,21 @@ async def session_ws(websocket: WebSocket) -> None:
         settings,
         sink=sink,
         session_id=session_id,
+        ingest=ingest,
     )
+
+    if ingest is not None:
+        try:
+            await ingest.start_session(
+                session_id=session_id,
+                theme_domain=session_prompt.theme.domain,
+                band=session_prompt.band,
+            )
+        except Exception:
+            logger.exception(
+                "session %s: start_session failed — continuing without DB state",
+                session_id,
+            )
 
     try:
         await task.run(params=PipelineTaskParams(loop=asyncio.get_event_loop()))
@@ -82,3 +115,8 @@ async def session_ws(websocket: WebSocket) -> None:
         logger.exception("session %s: pipeline error", session_id)
     finally:
         logger.info("session %s: client disconnected", session_id)
+        if ingest is not None:
+            try:
+                await ingest.end_session(session_id=session_id)
+            except Exception:
+                logger.exception("session %s: end_session failed", session_id)

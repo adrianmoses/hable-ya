@@ -5,6 +5,7 @@ Usage::
     python -m finetune.generate                  # consolidate + write SFT
     python -m finetune.generate --no-consolidate # skip consolidation step
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,6 +53,7 @@ def _has_empty_error_field(rec: dict) -> bool:
         if isinstance(e, dict)
     )
 
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = REPO_ROOT / "eval" / "fixtures"
 DATASETS_DIR = REPO_ROOT / "finetune" / "datasets"
@@ -61,7 +63,11 @@ def _consolidate() -> int:
     """Run the fixture consolidation pipeline."""
     print("Running fixture consolidation ...")
     result = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / "generate_eval_fixtures.py"), "consolidate"],
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "generate_eval_fixtures.py"),
+            "consolidate",
+        ],
         cwd=str(REPO_ROOT),
     )
     print(result.returncode)
@@ -122,7 +128,9 @@ def main() -> int:
         eligible = standard
         cat_skipped = 0
     else:
-        eligible = [f for f in standard if _extract_category(f.id) in FINETUNE_CATEGORIES]
+        eligible = [
+            f for f in standard if _extract_category(f.id) in FINETUNE_CATEGORIES
+        ]
         cat_skipped = len(standard) - len(eligible)
 
     print(
@@ -152,7 +160,9 @@ def main() -> int:
     _write_jsonl(sft_path, sft_records)
     print(f"Wrote {len(sft_records)} SFT examples → {sft_path}")
     if args.strict:
-        print(f"  (strict mode: dropped {dropped_strict} records with empty produced/target)")
+        print(
+            f"  (strict mode: dropped {dropped_strict} records with empty produced/target)"
+        )
     print("\nCategory distribution:")
     for cat, n in sorted(cat_counts.items(), key=lambda x: -x[1]):
         print(f"  {cat:28s} {n}")

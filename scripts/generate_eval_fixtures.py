@@ -8,6 +8,7 @@ Subcommands mirror the four stages from ``habla_fixture_spec.md``:
     consolidate Assemble _approved/<cat>/*.json into eval/fixtures/<cat>.json
     all         generate → validate → review → consolidate
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,12 +23,14 @@ from scripts.fixtures import (
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("generate", help="submit batches and write pending fixtures").set_defaults(
-        forward=generate_fixtures.main
-    )
+    sub.add_parser(
+        "generate", help="submit batches and write pending fixtures"
+    ).set_defaults(forward=generate_fixtures.main)
     sub.add_parser("validate", help="validate pending fixtures").set_defaults(
         forward=validate_fixtures.main
     )
@@ -37,9 +40,9 @@ def main() -> int:
     sub.add_parser("consolidate", help="assemble final category files").set_defaults(
         forward=consolidate_fixtures.main
     )
-    sub.add_parser("all", help="generate → validate → review → consolidate").set_defaults(
-        forward=None
-    )
+    sub.add_parser(
+        "all", help="generate → validate → review → consolidate"
+    ).set_defaults(forward=None)
     sub.add_parser(
         "auto",
         help="generate → auto-approve (no TUI) → consolidate",

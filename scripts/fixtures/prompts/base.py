@@ -3,6 +3,7 @@
 Built once at import time and passed with ``cache_control: ephemeral`` so
 Anthropic's prompt cache covers it across every generation call.
 """
+
 from __future__ import annotations
 
 import json

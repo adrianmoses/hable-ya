@@ -11,6 +11,7 @@ Buffers every `LLMTextFrame` between `LLMFullResponseStartFrame` and
 3. Emit a single cleaned `LLMTextFrame` with all tool-call syntax stripped so
    the tool text never reaches TTS.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,6 +25,7 @@ from pipecat.frames.frames import (
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from eval.scoring.turn import parse_tool_calls, strip_tool_calls
+from hable_ya.learner.ingest import TurnIngestService
 from hable_ya.pipeline.prompts.render import normalize_runtime_log_turn_args
 from hable_ya.runtime.observations import TurnObservation, TurnObservationSink
 
@@ -31,10 +33,17 @@ logger = logging.getLogger("hable_ya.pipeline.tool_handler")
 
 
 class HableYaToolHandler(FrameProcessor):
-    def __init__(self, sink: TurnObservationSink, session_id: str) -> None:
+    def __init__(
+        self,
+        sink: TurnObservationSink,
+        session_id: str,
+        *,
+        ingest: TurnIngestService | None = None,
+    ) -> None:
         super().__init__()
         self._sink = sink
         self._session_id = session_id
+        self._ingest = ingest
         self._buffer: list[str] = []
         self._buffering: bool = False
 
@@ -114,6 +123,16 @@ class HableYaToolHandler(FrameProcessor):
                     L1_used=normalized["L1_used"],
                 )
                 await self._sink.append(obs)
+                if self._ingest is not None:
+                    try:
+                        await self._ingest.ingest(obs)
+                    except Exception:
+                        self._sink.ingest_failed += 1
+                        logger.exception(
+                            "session %s: learner DB ingest failed — "
+                            "observation kept in JSONL only",
+                            self._session_id,
+                        )
 
         cleaned = strip_tool_calls(text)
         if cleaned:

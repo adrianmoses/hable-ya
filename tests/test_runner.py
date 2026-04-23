@@ -6,6 +6,7 @@ FrameProcessor stand-ins for STT/LLM/TTS/transport and assert on the processor
 order `build_pipeline()` produces. Ordering regressions would otherwise only be
 catchable by manual end-to-end runs.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

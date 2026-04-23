@@ -1,4 +1,5 @@
 """Download Gemma 4 E4B model in GGUF and/or HuggingFace formats."""
+
 from __future__ import annotations
 
 import argparse

@@ -8,6 +8,7 @@ suite.
 Usage:
     python scripts/voice_client.py input.wav output.wav [--url ws://host:port/ws/session]
 """
+
 from __future__ import annotations
 
 import argparse

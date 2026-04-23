@@ -1,4 +1,5 @@
 """Async wrapper around `alembic.command.upgrade`."""
+
 from __future__ import annotations
 
 import asyncio

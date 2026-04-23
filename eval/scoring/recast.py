@@ -1,10 +1,10 @@
 """recast_present and recast_explicit checks."""
+
 from __future__ import annotations
 
 import functools
 import re
 import warnings
-
 
 # POS tags that carry the corrected-form's identity. Excludes PRON (person
 # flips like me/te/le are expected in recasts) and ADV (modifiers like
@@ -15,13 +15,29 @@ _CONTENT_POS = {"VERB", "AUX", "NOUN", "PROPN", "ADJ"}
 # instead of the infinitive (a known gap in `es_core_news_sm` for some
 # 1st-person and irregular forms — e.g. `cocino` -> `cocino` instead of
 # `cocinar`). When this happens we fall back to a 4-char stem prefix.
-_VERB_SUFFIXES = ("ar", "er", "ir", "o", "as", "es", "amos", "emos", "imos",
-                  "an", "en", "aba", "ía", "ó", "é", "í")
+_VERB_SUFFIXES = (
+    "ar",
+    "er",
+    "ir",
+    "o",
+    "as",
+    "es",
+    "amos",
+    "emos",
+    "imos",
+    "an",
+    "en",
+    "aba",
+    "ía",
+    "ó",
+    "é",
+    "í",
+)
 _STEM_LEN = 4
 
 
 @functools.lru_cache(maxsize=1)
-def _nlp():  # type: ignore[no-untyped-def]
+def _nlp():
     """Lazy-load the Spanish spaCy model. Disable parser/NER (not needed)."""
     import spacy
 
@@ -30,7 +46,7 @@ def _nlp():  # type: ignore[no-untyped-def]
         return spacy.load("es_core_news_sm", disable=["parser", "ner"])
 
 
-def _content_tokens(text: str) -> list[tuple[str, str]]:
+def content_tokens(text: str) -> list[tuple[str, str]]:
     """Return content tokens as (lemma, stem) pairs.
 
     The stem is a 4-char prefix used as a fallback when spaCy lemmatization
@@ -52,6 +68,26 @@ def _content_tokens(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def content_lemma_surfaces(text: str) -> list[tuple[str, str]]:
+    """Return content tokens as (lemma, first-seen surface form) pairs.
+
+    Shares the POS filter + is_alpha guard with `content_tokens` but keeps
+    the original surface token instead of the 4-char stem. Used by the
+    runtime vocabulary writer, which records both the canonical lemma
+    (primary key) and one sample surface form for human inspection.
+    """
+    if not text or not text.strip():
+        return []
+    seen: dict[str, str] = {}
+    for tok in _nlp()(text):
+        if tok.pos_ not in _CONTENT_POS or not tok.is_alpha:
+            continue
+        lemma = tok.lemma_.lower()
+        if lemma and lemma not in seen:
+            seen[lemma] = tok.text
+    return list(seen.items())
+
+
 def _all_keys(tokens: list[tuple[str, str]]) -> set[str]:
     out: set[str] = set()
     for lemma, stem in tokens:
@@ -67,11 +103,12 @@ def _matches(target: str, response_keys: set[str]) -> bool:
     response_keys. Requires ≥50% of target tokens to match — strict subset
     is too rigid for natural recasts, which routinely drop one modifier.
     """
-    tgt_tokens = _content_tokens(target)
+    tgt_tokens = content_tokens(target)
     if not tgt_tokens:
         return False
     matched = sum(
-        1 for lemma, stem in tgt_tokens
+        1
+        for lemma, stem in tgt_tokens
         if lemma in response_keys or stem in response_keys
     )
     return matched * 2 >= len(tgt_tokens)
@@ -119,7 +156,7 @@ def recast_present(
     if recast_form is None and not target_forms:
         return True
 
-    response_keys = _all_keys(_content_tokens(response))
+    response_keys = _all_keys(content_tokens(response))
     if not response_keys:
         return False
 

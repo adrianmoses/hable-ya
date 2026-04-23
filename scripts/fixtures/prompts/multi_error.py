@@ -1,4 +1,5 @@
 """multi_error — scaled fixture generation with variance axes."""
+
 from __future__ import annotations
 
 import random
@@ -6,7 +7,7 @@ import random
 from eval.fixtures.schema import CEFRBand
 
 from . import ERROR_TYPES_BY_BAND
-from ._variance import render_axes_block, sample_axes
+from ._variance import sample_axes
 
 PRIORITY_RULE = """
 Priority rule (must be applied consistently):
@@ -18,9 +19,16 @@ Priority rule (must be applied consistently):
 """
 
 DOMAINS = [
-    "food_and_cooking", "family_and_friends", "work_and_study",
-    "travel_and_transport", "weekend_plans", "hobbies_and_music",
-    "health_and_sports", "city_life", "weather_and_seasons", "shopping",
+    "food_and_cooking",
+    "family_and_friends",
+    "work_and_study",
+    "travel_and_transport",
+    "weekend_plans",
+    "hobbies_and_music",
+    "health_and_sports",
+    "city_life",
+    "weather_and_seasons",
+    "shopping",
 ]
 
 
@@ -47,7 +55,7 @@ def build_user_prompts(n: int, band: CEFRBand) -> list[str]:
 Theme domain: **{domain}**
 Error combination (use exactly these in the learner utterance):
 - Priority error to recast: **{priority}**
-- Ignored errors: {', '.join(f'**{e}**' for e in ignored)}
+- Ignored errors: {", ".join(f"**{e}**" for e in ignored)}
 
 Variance constraints (use these EXACT values):
 - Fluency signal: **{fluency}** — set `metadata.fluency_signal` and

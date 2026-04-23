@@ -5,6 +5,7 @@ pings the llama.cpp backend until it is ready before flipping
 `app.state.ready = True`. The `cuda_bootstrap` call runs before any pipecat
 imports so CUDA-linked libs resolve correctly (see hable_ya/cuda_bootstrap.py).
 """
+
 from __future__ import annotations
 
 # Must run before any pipecat/torch import — see hable_ya/cuda_bootstrap.py.
@@ -27,6 +28,8 @@ from hable_ya.db import (  # noqa: E402
     open_pool,
     upgrade_to_head,
 )
+from hable_ya.learner import graph as learner_graph  # noqa: E402
+from hable_ya.learner.ingest import TurnIngestService  # noqa: E402
 from hable_ya.pipeline.services import load_services, warmup_llm  # noqa: E402
 from hable_ya.runtime.observations import TurnObservationSink  # noqa: E402
 
@@ -51,6 +54,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await upgrade_to_head()
     app.state.db_pool = await open_pool()
     app.state.db = HableYaDB(app.state.db_pool)
+    app.state.ingest = TurnIngestService(app.state.db_pool)
+
+    # Seed the single Learner node and one Scenario node per theme so the
+    # first session's graph writes can MATCH them. Both calls are idempotent.
+    async with app.state.db_pool.acquire() as conn:
+        await learner_graph.ensure_learner_node(conn)
+        await learner_graph.ensure_scenario_nodes(conn)
+
     try:
         await warmup_llm(settings)
         app.state.ready = True

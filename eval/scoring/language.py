@@ -1,4 +1,5 @@
 """contains_english() detection."""
+
 from __future__ import annotations
 
 from langdetect import detect_langs

@@ -12,6 +12,13 @@ services:
       HABLE_YA_DATABASE_URL: postgresql://hable_ya:hable_ya@db:5432/hable_ya
     volumes:
       - ./data:/app/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     depends_on:
       llama:
         condition: service_started

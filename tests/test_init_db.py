@@ -1,4 +1,5 @@
 """Smoke test for scripts/init_db.py's idempotency guarantee."""
+
 from __future__ import annotations
 
 import asyncpg

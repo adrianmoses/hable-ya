@@ -1,4 +1,5 @@
 """Tests for the strict universal_checks added in Phase 2."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -77,7 +78,9 @@ def _make(mutator=None) -> Fixture:
     data = _base_fixture_dict()
     if mutator:
         mutator(data)
-    return parse_fixture(data)
+    result = parse_fixture(data)
+    assert isinstance(result, Fixture)
+    return result
 
 
 class TestBaselineFixturePasses:
@@ -96,6 +99,7 @@ class TestForbiddenKeys:
         def m(data):
             args = data["expected"]["tool_calls"][0]["arguments"]
             args["errors_observed"] = args.pop("errors")
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("errors_observed" in e for e in errs)
@@ -104,6 +108,7 @@ class TestForbiddenKeys:
         def m(data):
             args = data["expected"]["tool_calls"][0]["arguments"]
             args["errors_detected"] = args.pop("errors")
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("errors_detected" in e for e in errs)
@@ -112,9 +117,10 @@ class TestForbiddenKeys:
 class TestCanonicalTypeRequirement:
     def test_non_canonical_type_rejected(self):
         def m(data):
-            data["expected"]["tool_calls"][0]["arguments"]["errors"][0][
-                "type"
-            ] = "subjunctive_after_emotion_verb"
+            data["expected"]["tool_calls"][0]["arguments"]["errors"][0]["type"] = (
+                "subjunctive_after_emotion_verb"
+            )
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("not a canonical type" in e for e in errs)
@@ -123,12 +129,12 @@ class TestCanonicalTypeRequirement:
         from scripts.fixtures.prompts import ALL_ERROR_TYPES
 
         for canonical in ALL_ERROR_TYPES:
+
             def m(data, c=canonical):
                 # Set errors_present so the type validation block runs.
                 data["metadata"]["errors_present"] = [c]
-                data["expected"]["tool_calls"][0]["arguments"]["errors"][0][
-                    "type"
-                ] = c
+                data["expected"]["tool_calls"][0]["arguments"]["errors"][0]["type"] = c
+
             fixture = _make(m)
             errs = [e for e in universal_checks(fixture) if "canonical type" in e]
             assert not errs, f"{canonical} rejected: {errs}"
@@ -137,18 +143,16 @@ class TestCanonicalTypeRequirement:
 class TestProducedTargetRequired:
     def test_empty_produced_rejected(self):
         def m(data):
-            data["expected"]["tool_calls"][0]["arguments"]["errors"][0][
-                "produced"
-            ] = ""
+            data["expected"]["tool_calls"][0]["arguments"]["errors"][0]["produced"] = ""
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("produced is empty" in e for e in errs)
 
     def test_empty_target_rejected(self):
         def m(data):
-            data["expected"]["tool_calls"][0]["arguments"]["errors"][0][
-                "target"
-            ] = ""
+            data["expected"]["tool_calls"][0]["arguments"]["errors"][0]["target"] = ""
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("target is empty" in e for e in errs)
@@ -162,6 +166,7 @@ class TestProducedTargetRequired:
             data["expected"]["recast_form"] = None
             data["expected"]["response_text"] = "Genial. ¿Qué planes tienes?"
             data["expected"]["tool_calls"][0]["arguments"]["errors"] = []
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         # Should pass cleanly — no error-related complaints.
@@ -174,9 +179,8 @@ class TestErrorEntryShape:
     def test_string_error_entry_rejected(self):
         # Some legacy fixtures store errors as bare strings — not dicts.
         def m(data):
-            data["expected"]["tool_calls"][0]["arguments"]["errors"] = [
-                "ser_estar"
-            ]
+            data["expected"]["tool_calls"][0]["arguments"]["errors"] = ["ser_estar"]
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("not an object" in e for e in errs)
@@ -190,6 +194,7 @@ class TestErrorFormLeak:
                 "El parque es cerca de tu casa, claro. ¿Vas mucho?"
             )
             # produced='es cerca' now appears in response
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("appears in response_text" in e for e in errs)
@@ -202,9 +207,8 @@ class TestErrorFormLeak:
             args = data["expected"]["tool_calls"][0]["arguments"]
             args["errors"][0]["produced"] = "es"
             args["errors"][0]["target"] = "está"
-            data["expected"]["response_text"] = (
-                "Ah, está cerca de tu casa. ¿Vas mucho?"
-            )
+            data["expected"]["response_text"] = "Ah, está cerca de tu casa. ¿Vas mucho?"
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         # 'es' should NOT be flagged as leaking just because it's inside 'está'.
@@ -217,9 +221,8 @@ class TestErrorFormLeak:
             args = data["expected"]["tool_calls"][0]["arguments"]
             args["errors"][0]["produced"] = "es"
             args["errors"][0]["target"] = "está"
-            data["expected"]["response_text"] = (
-                "Sí, es cerca y está bien. ¿Vas mucho?"
-            )
+            data["expected"]["response_text"] = "Sí, es cerca y está bien. ¿Vas mucho?"
+
         fixture = _make(m)
         errs = universal_checks(fixture)
         assert any("appears in response_text" in e for e in errs)

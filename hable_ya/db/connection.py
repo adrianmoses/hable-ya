@@ -4,6 +4,7 @@ Every new physical connection gets `LOAD 'age'` and a search_path that puts
 `ag_catalog` first — so callers can invoke `create_graph(...)` and `cypher(...)`
 unqualified without knowing AGE is special.
 """
+
 from __future__ import annotations
 
 import logging

@@ -5,6 +5,7 @@ database on the same Postgres instance that docker-compose exposes. If the
 admin DB is unreachable (no compose up, no local Postgres) every dependent
 test is skipped with a clear reason — non-DB tests stay green.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -57,10 +58,8 @@ def _override_database_url(url: str) -> Iterator[None]:
 async def _drop_and_create_test_db() -> None:
     conn = await asyncpg.connect(dsn=_admin_dsn())
     try:
-        await conn.execute(
-            f'DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);'
-        )
-        await conn.execute(f'CREATE DATABASE {TEST_DB_NAME};')
+        await conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);")
+        await conn.execute(f"CREATE DATABASE {TEST_DB_NAME};")
     finally:
         await conn.close()
 
@@ -68,9 +67,7 @@ async def _drop_and_create_test_db() -> None:
 async def _drop_test_db() -> None:
     conn = await asyncpg.connect(dsn=_admin_dsn())
     try:
-        await conn.execute(
-            f'DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);'
-        )
+        await conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);")
     finally:
         await conn.close()
 
@@ -110,3 +107,30 @@ async def db_conn(db_pool: asyncpg.Pool) -> AsyncIterator[asyncpg.Connection]:
             yield conn
         finally:
             await tx.rollback()
+
+
+@pytest_asyncio.fixture
+async def clean_learner_state(db_pool: asyncpg.Pool) -> asyncpg.Pool:
+    """Truncate learner tables and reset the profile row + AGE graph.
+
+    The learner tests need committed writes (not rollback) so they can call
+    the repo across multiple `async with pool.acquire()` blocks and observe
+    their own effects. Truncating up front + resetting the seed row is how
+    the rollback-free path stays isolated across tests.
+    """
+    from hable_ya.learner import graph as learner_graph
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "TRUNCATE error_observations, error_counts, vocabulary_items, "
+            "turns, sessions RESTART IDENTITY CASCADE"
+        )
+        await conn.execute(
+            "UPDATE learner_profile SET sessions_completed = 0, band = 'A2' "
+            "WHERE id = 1"
+        )
+        await conn.execute(
+            f"SELECT * FROM cypher('{learner_graph.GRAPH}', $$ "
+            f"MATCH (n) DETACH DELETE n $$) AS (v ag_catalog.agtype)"
+        )
+    return db_pool

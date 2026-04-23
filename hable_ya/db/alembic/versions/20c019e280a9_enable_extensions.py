@@ -1,10 +1,11 @@
 """enable_extensions
 
 Revision ID: 20c019e280a9
-Revises: 
+Revises:
 Create Date: 2026-04-21 21:48:23.848750+00:00
 
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -21,9 +22,7 @@ def upgrade() -> None:
     # runs this on every pool release) falls back to a path that still
     # resolves `ag_catalog` unqualified. Without this, the init-callback
     # `SET search_path` only survives until the first release-to-pool.
-    op.execute(
-        'ALTER ROLE hable_ya SET search_path = ag_catalog, "$user", public;'
-    )
+    op.execute('ALTER ROLE hable_ya SET search_path = ag_catalog, "$user", public;')
 
 
 def downgrade() -> None:
