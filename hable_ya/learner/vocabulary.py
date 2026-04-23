@@ -11,6 +11,7 @@ are ~1ms.
 Methods accept an ``asyncpg.Connection`` so writes compose into the shared
 ingestion transaction alongside `turns`, errors, and AGE graph writes.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -63,9 +64,7 @@ class VocabularyRepo:
         return [lemma for lemma, _sample in pairs]
 
     @staticmethod
-    async def top_recent(
-        conn: asyncpg.Connection, *, limit: int = 5
-    ) -> list[str]:
+    async def top_recent(conn: asyncpg.Connection, *, limit: int = 5) -> list[str]:
         rows = await conn.fetch(
             """
             SELECT lemma FROM vocabulary_items

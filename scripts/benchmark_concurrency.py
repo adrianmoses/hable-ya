@@ -12,6 +12,7 @@ Interpretation:
 - speedup ~1x: something is serializing even though server reports n_slots > 1.
 - speedup ~2x: partial parallelism; usually GPU memory pressure or overhead.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,14 +32,16 @@ def _realistic_messages() -> list[dict[str, str]]:
     from pathlib import Path
 
     from eval.fixtures.schema import Fixture, load_fixtures
-    from finetune.format import _render_system_prompt
+    from finetune.format import render_system_prompt
 
-    fixtures = [f for f in load_fixtures(Path("eval/fixtures")) if isinstance(f, Fixture)]
+    fixtures = [
+        f for f in load_fixtures(Path("eval/fixtures")) if isinstance(f, Fixture)
+    ]
     fx = fixtures[0]
     msgs: list[dict[str, str]] = [
         {
             "role": "system",
-            "content": _render_system_prompt(
+            "content": render_system_prompt(
                 fx.system_params, band=fx.metadata.cefr_band
             ),
         },
@@ -58,7 +61,7 @@ async def one_call(
     t0 = time.time()
     await client.chat.completions.create(
         model=model,
-        messages=messages,
+        messages=messages,  # type: ignore[arg-type]
         max_tokens=max_tokens,
         temperature=0.0,
     )
@@ -94,7 +97,7 @@ async def run(base_url: str, model: str, n: int, realistic: bool) -> None:
     for i in range(n):
         await one_call(client, model, messages, max_tokens, i)
     seq = time.time() - t0
-    print(f"sequential {n}x : {seq:6.2f}s total   {seq/n:.2f}s per call")
+    print(f"sequential {n}x : {seq:6.2f}s total   {seq / n:.2f}s per call")
 
     # Concurrent: all N in flight.
     t0 = time.time()
@@ -118,11 +121,14 @@ def main() -> None:
     parser.add_argument("--base-url", default="http://localhost:8080")
     parser.add_argument("--model", default="gemma-4-e4b")
     parser.add_argument(
-        "--n", type=int, default=8,
+        "--n",
+        type=int,
+        default=8,
         help="how many calls to fire for each mode (default: 8)",
     )
     parser.add_argument(
-        "--realistic", action="store_true",
+        "--realistic",
+        action="store_true",
         help="Use an eval-sized prompt (rendered system prompt + conversation) "
         "with max_tokens=512, instead of a tiny toy prompt. This is what the "
         "real eval load looks like.",

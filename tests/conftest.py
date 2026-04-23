@@ -5,6 +5,7 @@ database on the same Postgres instance that docker-compose exposes. If the
 admin DB is unreachable (no compose up, no local Postgres) every dependent
 test is skipped with a clear reason — non-DB tests stay green.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -57,10 +58,8 @@ def _override_database_url(url: str) -> Iterator[None]:
 async def _drop_and_create_test_db() -> None:
     conn = await asyncpg.connect(dsn=_admin_dsn())
     try:
-        await conn.execute(
-            f'DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);'
-        )
-        await conn.execute(f'CREATE DATABASE {TEST_DB_NAME};')
+        await conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);")
+        await conn.execute(f"CREATE DATABASE {TEST_DB_NAME};")
     finally:
         await conn.close()
 
@@ -68,9 +67,7 @@ async def _drop_and_create_test_db() -> None:
 async def _drop_test_db() -> None:
     conn = await asyncpg.connect(dsn=_admin_dsn())
     try:
-        await conn.execute(
-            f'DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);'
-        )
+        await conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME} WITH (FORCE);")
     finally:
         await conn.close()
 

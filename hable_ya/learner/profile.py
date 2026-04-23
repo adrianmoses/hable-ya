@@ -7,6 +7,7 @@ reads from `error_counts` / `vocabulary_items`. The actual mapping from
 snapshot → :class:`eval.fixtures.schema.LearnerProfile` happens in the
 prompt builder at render time; this module only owns persistence.
 """
+
 from __future__ import annotations
 
 import logging

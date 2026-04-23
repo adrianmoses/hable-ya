@@ -5,6 +5,7 @@ the same canonical 4-key payload used throughout fixture eval, SFT training,
 and the runtime observation sink (see ``hable_ya.pipeline.prompts.render``
 for the shared constants).
 """
+
 from __future__ import annotations
 
 LOG_TURN_TOOL: dict[str, object] = {
@@ -42,15 +43,12 @@ LOG_TURN_TOOL: dict[str, object] = {
                 "fluency_signal": {
                     "type": "string",
                     "enum": ["weak", "moderate", "strong"],
-                    "description": (
-                        "Overall fluency read of the learner's last turn."
-                    ),
+                    "description": ("Overall fluency read of the learner's last turn."),
                 },
                 "L1_used": {
                     "type": "boolean",
                     "description": (
-                        "True if the learner's last turn contained any "
-                        "English word."
+                        "True if the learner's last turn contained any English word."
                     ),
                 },
             },

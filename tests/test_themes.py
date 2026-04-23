@@ -1,4 +1,5 @@
 """Theme rotation and cooldown logic."""
+
 from __future__ import annotations
 
 import random

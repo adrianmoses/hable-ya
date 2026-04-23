@@ -5,6 +5,7 @@ metric). Has-error / clean-turn split is roughly 60/40 — the failing eval
 metric is dominated by under-populating `errors` on actual error turns, so
 weight the deck toward the failing case.
 """
+
 from __future__ import annotations
 
 import random
@@ -15,9 +16,16 @@ from . import ERROR_TYPES_BY_BAND
 from ._variance import pick_surface_form, render_axes_block, sample_axes
 
 DOMAINS = [
-    "food_and_cooking", "family_and_friends", "work_and_study",
-    "travel_and_transport", "weekend_plans", "hobbies_and_music",
-    "health_and_sports", "city_life", "weather_and_seasons", "shopping",
+    "food_and_cooking",
+    "family_and_friends",
+    "work_and_study",
+    "travel_and_transport",
+    "weekend_plans",
+    "hobbies_and_music",
+    "health_and_sports",
+    "city_life",
+    "weather_and_seasons",
+    "shopping",
 ]
 
 
@@ -32,7 +40,7 @@ def build_user_prompts(n: int, band: CEFRBand) -> list[str]:
         domain = rng.choice(DOMAINS)
         difficulty, fluency, turn_count = sample_axes(band, i, salt="tool")
         error = errors[i % len(errors)] if has_error else None
-        surface = pick_surface_form(error, band, i) if has_error else ""
+        surface = pick_surface_form(error, band, i) if error is not None else ""
 
         if has_error:
             error_block = (

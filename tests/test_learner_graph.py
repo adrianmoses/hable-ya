@@ -1,4 +1,5 @@
 """Graph writer upserts against the `learner_knowledge` AGE graph."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -22,9 +23,7 @@ async def clean_graph(db_pool: asyncpg.Pool) -> AsyncIterator[asyncpg.Pool]:
     yield db_pool
 
 
-async def _count(
-    pool: asyncpg.Pool, cypher_body: str
-) -> int:
+async def _count(pool: asyncpg.Pool, cypher_body: str) -> int:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             f"SELECT * FROM cypher('{graph.GRAPH}', $$ {cypher_body} $$) "
@@ -51,16 +50,13 @@ async def test_upsert_vocab_produces_edge_and_counter(
     async with clean_graph.acquire() as conn:
         await graph.ensure_learner_node(conn)
         for i in range(3):
-            await graph.upsert_vocab(
-                conn, lemma="comer", at=at + timedelta(minutes=i)
-            )
+            await graph.upsert_vocab(conn, lemma="comer", at=at + timedelta(minutes=i))
     nodes = await _count(
         clean_graph, "MATCH (v:VocabItem {lemma: 'comer'}) RETURN count(v)"
     )
     edges = await _count(
         clean_graph,
-        "MATCH (:Learner)-[r:PRODUCED]->(:VocabItem {lemma: 'comer'}) "
-        "RETURN count(r)",
+        "MATCH (:Learner)-[r:PRODUCED]->(:VocabItem {lemma: 'comer'}) RETURN count(r)",
     )
     prod_count = await _count(
         clean_graph,
@@ -132,9 +128,7 @@ async def test_ensure_scenario_nodes_creates_one_per_theme(
     async with clean_graph.acquire() as conn:
         await graph.ensure_scenario_nodes(conn)
         await graph.ensure_scenario_nodes(conn)  # idempotent
-    actual = await _count(
-        clean_graph, "MATCH (s:Scenario) RETURN count(s)"
-    )
+    actual = await _count(clean_graph, "MATCH (s:Scenario) RETURN count(s)")
     assert actual == expected
 
 
@@ -144,7 +138,5 @@ async def test_unsafe_identifier_is_skipped(clean_graph: asyncpg.Pool) -> None:
     async with clean_graph.acquire() as conn:
         await graph.ensure_learner_node(conn)
         await graph.upsert_vocab(conn, lemma="L'Hospitalet", at=at)
-    nodes = await _count(
-        clean_graph, "MATCH (v:VocabItem) RETURN count(v)"
-    )
+    nodes = await _count(clean_graph, "MATCH (v:VocabItem) RETURN count(v)")
     assert nodes == 0

@@ -1,4 +1,5 @@
 """Eval scoring deterministic checks."""
+
 from __future__ import annotations
 
 from eval.scoring.language import contains_english
@@ -63,18 +64,14 @@ class TestParseToolCalls:
         assert names.count("log_turn") == 1
 
     def test_api_tool_calls_preferred(self):
-        api_calls = [
-            {"name": "log_turn", "arguments": '{"learner_utterance": "api"}'}
-        ]
+        api_calls = [{"name": "log_turn", "arguments": '{"learner_utterance": "api"}'}]
         text = '[TOOL_CALL: log_turn]{"learner_utterance": "inline"}'
         calls = parse_tool_calls(text, api_calls)
         assert len(calls) == 1
         assert calls[0]["arguments"]["learner_utterance"] == "api"
 
     def test_api_tool_calls_dict_args(self):
-        api_calls = [
-            {"name": "log_turn", "arguments": {"learner_utterance": "direct"}}
-        ]
+        api_calls = [{"name": "log_turn", "arguments": {"learner_utterance": "direct"}}]
         calls = parse_tool_calls("text", api_calls)
         assert calls[0]["arguments"]["learner_utterance"] == "direct"
 
@@ -165,7 +162,9 @@ class TestContainsEnglish:
 
 class TestRegisterHeuristic:
     def test_a1_simple_passes(self):
-        assert check_register_heuristic("El parque está cerca. ¿Vas mucho?", "A1") is True
+        assert (
+            check_register_heuristic("El parque está cerca. ¿Vas mucho?", "A1") is True
+        )
 
     def test_a1_too_complex(self):
         text = (

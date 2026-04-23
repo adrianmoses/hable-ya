@@ -1,17 +1,26 @@
 """register_boundary — 20 fixtures (4 per band)."""
+
 from __future__ import annotations
 
 from eval.fixtures.schema import CEFRBand
 
 TRAPS = [
-    ("high_end_of_band",
-     "Learner performs at the top of their stated band. Agent must hold the band register without drifting upward."),
-    ("low_end_of_band",
-     "Learner struggles at the bottom of their stated band. Agent holds the band register anchored to the profile."),
-    ("band_crossing",
-     "One utterance is clearly above the band (memorized phrase). Agent does NOT permanently adjust upward for one strong turn."),
-    ("regression",
-     "Learner drops below expected level mid-topic. Agent temporarily simplifies without abandoning the theme."),
+    (
+        "high_end_of_band",
+        "Learner performs at the top of their stated band. Agent must hold the band register without drifting upward.",
+    ),
+    (
+        "low_end_of_band",
+        "Learner struggles at the bottom of their stated band. Agent holds the band register anchored to the profile.",
+    ),
+    (
+        "band_crossing",
+        "One utterance is clearly above the band (memorized phrase). Agent does NOT permanently adjust upward for one strong turn.",
+    ),
+    (
+        "regression",
+        "Learner drops below expected level mid-topic. Agent temporarily simplifies without abandoning the theme.",
+    ),
 ]
 
 

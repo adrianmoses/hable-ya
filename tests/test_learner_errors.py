@@ -1,4 +1,5 @@
 """ErrorRepo — per-turn writes + top-N reads."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -124,7 +125,8 @@ async def test_top_categories_ordering(clean_learner_state: asyncpg.Pool) -> Non
         await conn.execute(
             "INSERT INTO error_counts (category, count, last_seen_at) VALUES "
             "('a', 5, $1), ('b', 5, $2), ('c', 2, $1)",
-            at, at + timedelta(minutes=1),
+            at,
+            at + timedelta(minutes=1),
         )
         top = await ErrorRepo.top_categories(conn, limit=2)
     # Tie on count → broken by last_seen_at DESC → b before a.

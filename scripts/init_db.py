@@ -3,6 +3,7 @@
 Idempotent. Assumes the database and role exist (docker-compose creates them
 via POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD).
 """
+
 from __future__ import annotations
 
 import asyncio

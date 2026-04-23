@@ -5,6 +5,7 @@ pings the llama.cpp backend until it is ready before flipping
 `app.state.ready = True`. The `cuda_bootstrap` call runs before any pipecat
 imports so CUDA-linked libs resolve correctly (see hable_ya/cuda_bootstrap.py).
 """
+
 from __future__ import annotations
 
 # Must run before any pipecat/torch import — see hable_ya/cuda_bootstrap.py.

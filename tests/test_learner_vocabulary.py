@@ -1,4 +1,5 @@
 """VocabularyRepo — lemmatize + upsert."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -22,15 +23,12 @@ async def test_record_extracts_content_lemmas(
     utterance = "quiero comer manzanas todos los días"
     async with clean_learner_state.acquire() as conn:
         async with conn.transaction():
-            lemmas = await VocabularyRepo.record(
-                conn, utterance=utterance, at=at
-            )
+            lemmas = await VocabularyRepo.record(conn, utterance=utterance, at=at)
     assert {"querer", "comer", "manzana", "día"} <= set(lemmas)
 
     async with clean_learner_state.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT lemma, production_count FROM vocabulary_items "
-            "ORDER BY lemma"
+            "SELECT lemma, production_count FROM vocabulary_items ORDER BY lemma"
         )
     present = {r["lemma"]: r["production_count"] for r in rows}
     for lemma in ("querer", "comer", "manzana", "día"):

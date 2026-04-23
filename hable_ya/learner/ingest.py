@@ -8,6 +8,7 @@ graph. Called from the tool handler on the happy path of every validated
 ``ingest_failed``) rather than propagated, so a DB outage never takes
 down the live session.
 """
+
 from __future__ import annotations
 
 import logging

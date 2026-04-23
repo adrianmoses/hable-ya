@@ -8,6 +8,7 @@ processors) is built fresh inside the handler.
 Connection is refused with code 1013 ("try again later") if the app is still
 warming up, so clients don't wait indefinitely on a dead pipeline.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -64,9 +65,7 @@ async def session_ws(websocket: WebSocket) -> None:
     # The fine-tuned Gemma is trained to emit plain-text `log_turn(...)` on its
     # own; HABLE_YA_TOOLS is not injected into the LLM — see
     # hable_ya/tools/schema.py for the documented payload shape.
-    recent_domains = (
-        await _query_recent_theme_domains(pool) if pool is not None else []
-    )
+    recent_domains = await _query_recent_theme_domains(pool) if pool is not None else []
     session_prompt = await build_session_prompt(
         learner, pool=pool, recent_domains=recent_domains
     )
@@ -120,6 +119,4 @@ async def session_ws(websocket: WebSocket) -> None:
             try:
                 await ingest.end_session(session_id=session_id)
             except Exception:
-                logger.exception(
-                    "session %s: end_session failed", session_id
-                )
+                logger.exception("session %s: end_session failed", session_id)

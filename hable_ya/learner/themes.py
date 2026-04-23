@@ -11,6 +11,7 @@ configured via settings), and falls back to the neutral theme only if the
 pool is exhausted by the cooldown — which, at ≥ 8 entries per band, cannot
 happen under default settings.
 """
+
 from __future__ import annotations
 
 import random
@@ -45,7 +46,11 @@ _A1_THEMES: list[Theme] = [
             "saluda, pregúntale qué quiere tomar y si lo quiere para aquí "
             "o para llevar. Mantén frases cortas."
         ),
-        target_structures=["querer + sustantivo", "saludos formales", "para aquí / para llevar"],
+        target_structures=[
+            "querer + sustantivo",
+            "saludos formales",
+            "para aquí / para llevar",
+        ],
     ),
     Theme(
         domain="hablar de la familia",
@@ -72,7 +77,11 @@ _A1_THEMES: list[Theme] = [
             "vendedor — ofrece lo que tienes, pregúntale cuánto quiere, y "
             "dile el precio. Usa kilos y euros."
         ),
-        target_structures=["querer + cantidad + de", "cuánto cuesta / vale", "números grandes"],
+        target_structures=[
+            "querer + cantidad + de",
+            "cuánto cuesta / vale",
+            "números grandes",
+        ],
     ),
     Theme(
         domain="pedir direcciones",
@@ -81,7 +90,11 @@ _A1_THEMES: list[Theme] = [
             "eres un peatón amable — dale indicaciones sencillas: sigue "
             "recto, gira a la derecha, está al lado de."
         ),
-        target_structures=["imperativo informal (sigue, gira)", "preposiciones de lugar", "estar + ubicación"],
+        target_structures=[
+            "imperativo informal (sigue, gira)",
+            "preposiciones de lugar",
+            "estar + ubicación",
+        ],
     ),
     Theme(
         domain="hablar del clima",
@@ -90,7 +103,11 @@ _A1_THEMES: list[Theme] = [
             "hace en su ciudad, qué estación prefiere. Frases muy cortas, "
             "vocabulario básico."
         ),
-        target_structures=["hace + sustantivo (frío/calor/sol)", "estar + adjetivo (soleado/nublado)", "estaciones"],
+        target_structures=[
+            "hace + sustantivo (frío/calor/sol)",
+            "estar + adjetivo (soleado/nublado)",
+            "estaciones",
+        ],
     ),
     Theme(
         domain="mi día normal",
@@ -99,7 +116,11 @@ _A1_THEMES: list[Theme] = [
             "levanta, qué desayuna, a qué hora trabaja o estudia. Reacciona "
             "con comentarios cortos."
         ),
-        target_structures=["verbos reflexivos en presente (levantarse, ducharse)", "a qué hora + verbo", "primero / después / luego"],
+        target_structures=[
+            "verbos reflexivos en presente (levantarse, ducharse)",
+            "a qué hora + verbo",
+            "primero / después / luego",
+        ],
     ),
     Theme(
         domain="comida favorita",
@@ -108,7 +129,11 @@ _A1_THEMES: list[Theme] = [
             "no le gusta, cuál es su plato favorito. Nombra platos típicos "
             "españoles o latinoamericanos si ayuda."
         ),
-        target_structures=["gustar + sustantivo", "preferir + sustantivo", "comidas básicas"],
+        target_structures=[
+            "gustar + sustantivo",
+            "preferir + sustantivo",
+            "comidas básicas",
+        ],
     ),
     Theme(
         domain="colores y ropa",
@@ -117,7 +142,11 @@ _A1_THEMES: list[Theme] = [
             "prendas, si le queda bien. Si no sabe una palabra, ofrécesela "
             "de forma natural."
         ),
-        target_structures=["llevar + prenda", "colores + concordancia", "me queda / te queda"],
+        target_structures=[
+            "llevar + prenda",
+            "colores + concordancia",
+            "me queda / te queda",
+        ],
     ),
 ]
 
@@ -130,7 +159,11 @@ _A2_THEMES: list[Theme] = [
             "tiene planes con amigos, si va a salir, qué le gustaría hacer. "
             "Comparte los tuyos brevemente."
         ),
-        target_structures=["ir a + infinitivo", "me gustaría + infinitivo", "quedar con alguien"],
+        target_structures=[
+            "ir a + infinitivo",
+            "me gustaría + infinitivo",
+            "quedar con alguien",
+        ],
     ),
     Theme(
         domain="describir tu ciudad",
@@ -148,7 +181,11 @@ _A2_THEMES: list[Theme] = [
             "qué va a tomar, explícale algunos platos de la carta, y "
             "recomiéndale uno si te pide sugerencia."
         ),
-        target_structures=["de primero / de segundo", "llevar + ingredientes", "recomendar + sustantivo"],
+        target_structures=[
+            "de primero / de segundo",
+            "llevar + ingredientes",
+            "recomendar + sustantivo",
+        ],
     ),
     Theme(
         domain="viajar en tren o autobús",
@@ -157,7 +194,11 @@ _A2_THEMES: list[Theme] = [
             "la taquilla — pregúntale destino, si es ida y vuelta, a qué "
             "hora quiere salir."
         ),
-        target_structures=["ida / ida y vuelta", "a qué hora sale / llega", "hacer trasbordo"],
+        target_structures=[
+            "ida / ida y vuelta",
+            "a qué hora sale / llega",
+            "hacer trasbordo",
+        ],
     ),
     Theme(
         domain="ir al médico",
@@ -166,7 +207,11 @@ _A2_THEMES: list[Theme] = [
             "pregúntale qué le pasa, desde cuándo, si tiene otros síntomas. "
             "Dale un consejo sencillo al final."
         ),
-        target_structures=["me duele / me duelen", "desde hace + tiempo", "tener que + infinitivo"],
+        target_structures=[
+            "me duele / me duelen",
+            "desde hace + tiempo",
+            "tener que + infinitivo",
+        ],
     ),
     Theme(
         domain="vacaciones pasadas",
@@ -174,7 +219,11 @@ _A2_THEMES: list[Theme] = [
             "Pregúntale al estudiante por sus últimas vacaciones: adónde "
             "fue, con quién, qué hizo, si le gustó. Practica pretéritos."
         ),
-        target_structures=["pretérito indefinido (fui, estuve, vi)", "estar + gerundio en pasado", "me gustó / no me gustó"],
+        target_structures=[
+            "pretérito indefinido (fui, estuve, vi)",
+            "estar + gerundio en pasado",
+            "me gustó / no me gustó",
+        ],
     ),
     Theme(
         domain="llamar por teléfono",
@@ -183,7 +232,11 @@ _A2_THEMES: list[Theme] = [
             "contestas el teléfono — pídele nombre, día, hora, número de "
             "personas."
         ),
-        target_structures=["a nombre de", "para + número de personas", "cortesía formal en teléfono"],
+        target_structures=[
+            "a nombre de",
+            "para + número de personas",
+            "cortesía formal en teléfono",
+        ],
     ),
     Theme(
         domain="alquilar un piso",
@@ -192,7 +245,11 @@ _A2_THEMES: list[Theme] = [
             "propietario — descríbele el piso, dile el precio, y quedad "
             "para verlo."
         ),
-        target_structures=["tener + habitaciones", "estar + ubicación", "quedar para + infinitivo"],
+        target_structures=[
+            "tener + habitaciones",
+            "estar + ubicación",
+            "quedar para + infinitivo",
+        ],
     ),
     Theme(
         domain="contar una rutina diaria",
@@ -201,7 +258,11 @@ _A2_THEMES: list[Theme] = [
             "por la mañana, por la tarde, por la noche. Pide que añada "
             "adverbios de frecuencia."
         ),
-        target_structures=["adverbios de frecuencia (siempre, a veces, nunca)", "soler + infinitivo", "partes del día"],
+        target_structures=[
+            "adverbios de frecuencia (siempre, a veces, nunca)",
+            "soler + infinitivo",
+            "partes del día",
+        ],
     ),
     Theme(
         domain="hablar del trabajo actual",
@@ -209,7 +270,11 @@ _A2_THEMES: list[Theme] = [
             "Habla con el estudiante sobre su trabajo o sus estudios: qué "
             "hace, desde hace cuánto, qué le gusta y qué le cuesta."
         ),
-        target_structures=["trabajar de / como", "llevar + tiempo + gerundio", "me cuesta + infinitivo"],
+        target_structures=[
+            "trabajar de / como",
+            "llevar + tiempo + gerundio",
+            "me cuesta + infinitivo",
+        ],
     ),
 ]
 
@@ -222,7 +287,11 @@ _B1_THEMES: list[Theme] = [
             "olvidará: cuándo pasó, dónde, qué hizo especial ese momento. "
             "Practica narración en pasado."
         ),
-        target_structures=["contraste pretérito / imperfecto", "cuando + pretérito", "adjetivos de valoración"],
+        target_structures=[
+            "contraste pretérito / imperfecto",
+            "cuando + pretérito",
+            "adjetivos de valoración",
+        ],
     ),
     Theme(
         domain="problema en el trabajo",
@@ -231,7 +300,11 @@ _B1_THEMES: list[Theme] = [
             "Escucha, pregúntale qué hizo, y sugiérele una alternativa con "
             "'yo que tú' o 'deberías'."
         ),
-        target_structures=["yo que tú + condicional", "deberías + infinitivo", "porque / aunque"],
+        target_structures=[
+            "yo que tú + condicional",
+            "deberías + infinitivo",
+            "porque / aunque",
+        ],
     ),
     Theme(
         domain="tu vida hace diez años",
@@ -239,7 +312,11 @@ _B1_THEMES: list[Theme] = [
             "Habla con el estudiante de cómo era su vida hace diez años: "
             "dónde vivía, qué hacía, con quién salía. Foco en el imperfecto."
         ),
-        target_structures=["imperfecto descriptivo", "antes + imperfecto / ahora + presente", "soler + infinitivo en pasado"],
+        target_structures=[
+            "imperfecto descriptivo",
+            "antes + imperfecto / ahora + presente",
+            "soler + infinitivo en pasado",
+        ],
     ),
     Theme(
         domain="planear un viaje con amigos",
@@ -248,7 +325,11 @@ _B1_THEMES: list[Theme] = [
             "haréis allí, quién reserva qué. Usa futuro y presente de "
             "intención."
         ),
-        target_structures=["futuro simple", "subjuntivo en 'cuando + verbo'", "reparto de tareas"],
+        target_structures=[
+            "futuro simple",
+            "subjuntivo en 'cuando + verbo'",
+            "reparto de tareas",
+        ],
     ),
     Theme(
         domain="consejos sobre salud",
@@ -257,7 +338,11 @@ _B1_THEMES: list[Theme] = [
             "Dale recomendaciones concretas con imperativo o 'te recomiendo "
             "que + subjuntivo'."
         ),
-        target_structures=["te recomiendo que + subjuntivo", "imperativo afirmativo/negativo", "es importante que + subjuntivo"],
+        target_structures=[
+            "te recomiendo que + subjuntivo",
+            "imperativo afirmativo/negativo",
+            "es importante que + subjuntivo",
+        ],
     ),
     Theme(
         domain="película o libro que te marcó",
@@ -266,7 +351,11 @@ _B1_THEMES: list[Theme] = [
             "que le marcó: de qué va, qué le gustó, por qué. Reacciona con "
             "opiniones propias."
         ),
-        target_structures=["tratar de / ir de", "lo que más / menos me gustó", "creer que + indicativo / no creer que + subjuntivo"],
+        target_structures=[
+            "tratar de / ir de",
+            "lo que más / menos me gustó",
+            "creer que + indicativo / no creer que + subjuntivo",
+        ],
     ),
     Theme(
         domain="problemas con un electrodoméstico",
@@ -275,7 +364,11 @@ _B1_THEMES: list[Theme] = [
             "técnico — pregúntale qué pasa, desde cuándo, y propón una "
             "solución."
         ),
-        target_structures=["se me ha roto / estropeado", "pretérito perfecto", "tiene que + infinitivo"],
+        target_structures=[
+            "se me ha roto / estropeado",
+            "pretérito perfecto",
+            "tiene que + infinitivo",
+        ],
     ),
     Theme(
         domain="buscar trabajo",
@@ -284,7 +377,11 @@ _B1_THEMES: list[Theme] = [
             "estudiante por su experiencia, sus puntos fuertes, por qué "
             "le interesa el puesto."
         ),
-        target_structures=["llevar + tiempo + gerundio", "haber + participio", "me interesa + infinitivo / sustantivo"],
+        target_structures=[
+            "llevar + tiempo + gerundio",
+            "haber + participio",
+            "me interesa + infinitivo / sustantivo",
+        ],
     ),
     Theme(
         domain="redes sociales en tu vida",
@@ -293,7 +390,11 @@ _B1_THEMES: list[Theme] = [
             "cuáles usa, para qué, si ha tenido alguna experiencia mala. "
             "Comparte tu opinión."
         ),
-        target_structures=["para + infinitivo", "desde que + indicativo", "valoraciones personales"],
+        target_structures=[
+            "para + infinitivo",
+            "desde que + indicativo",
+            "valoraciones personales",
+        ],
     ),
     Theme(
         domain="un malentendido reciente",
@@ -301,7 +402,11 @@ _B1_THEMES: list[Theme] = [
             "Pídele al estudiante que te cuente un malentendido reciente "
             "con alguien: qué pasó, cómo lo solucionó, qué aprendió."
         ),
-        target_structures=["pluscuamperfecto", "si hubiera sabido… (introducir)", "al final + pretérito"],
+        target_structures=[
+            "pluscuamperfecto",
+            "si hubiera sabido… (introducir)",
+            "al final + pretérito",
+        ],
     ),
 ]
 
@@ -314,7 +419,11 @@ _B2_THEMES: list[Theme] = [
             "vida personal y profesional. Pide argumentos concretos y "
             "matiza si estás de acuerdo."
         ),
-        target_structures=["conectores de causa/consecuencia", "aunque + indicativo/subjuntivo", "estoy de acuerdo en que / con que"],
+        target_structures=[
+            "conectores de causa/consecuencia",
+            "aunque + indicativo/subjuntivo",
+            "estoy de acuerdo en que / con que",
+        ],
     ),
     Theme(
         domain="decisión difícil",
@@ -323,7 +432,11 @@ _B2_THEMES: list[Theme] = [
             "debe tomar. Ayúdale a ordenar pros y contras, y reflexionad "
             "sobre el condicional."
         ),
-        target_structures=["condicional simple / compuesto", "si + imperfecto de subjuntivo + condicional", "por un lado / por otro lado"],
+        target_structures=[
+            "condicional simple / compuesto",
+            "si + imperfecto de subjuntivo + condicional",
+            "por un lado / por otro lado",
+        ],
     ),
     Theme(
         domain="debate sobre dietas y salud",
@@ -332,7 +445,11 @@ _B2_THEMES: list[Theme] = [
             "keto…). Pide al estudiante que defienda una posición y "
             "rebátele con respeto."
         ),
-        target_structures=["verbos de opinión + subjuntivo / indicativo", "a mi modo de ver", "aunque + subjuntivo"],
+        target_structures=[
+            "verbos de opinión + subjuntivo / indicativo",
+            "a mi modo de ver",
+            "aunque + subjuntivo",
+        ],
     ),
     Theme(
         domain="tecnología y privacidad",
@@ -340,7 +457,11 @@ _B2_THEMES: list[Theme] = [
             "Conversa sobre hasta qué punto ceder datos a las apps es un "
             "buen intercambio. Pide ejemplos concretos y contraargumenta."
         ),
-        target_structures=["voz pasiva refleja (se cede, se recoge)", "siempre que + subjuntivo", "conectores concesivos"],
+        target_structures=[
+            "voz pasiva refleja (se cede, se recoge)",
+            "siempre que + subjuntivo",
+            "conectores concesivos",
+        ],
     ),
     Theme(
         domain="conflicto entre amigos o familia",
@@ -349,7 +470,11 @@ _B2_THEMES: list[Theme] = [
             "Ayúdale a verbalizarlo sin tomar partido y explora qué haría "
             "en el lugar del otro."
         ),
-        target_structures=["en su lugar + condicional", "reproche: deberías haber + participio", "reported speech en pasado"],
+        target_structures=[
+            "en su lugar + condicional",
+            "reproche: deberías haber + participio",
+            "reported speech en pasado",
+        ],
     ),
     Theme(
         domain="viajar por trabajo vs. por placer",
@@ -358,7 +483,11 @@ _B2_THEMES: list[Theme] = [
             "viajar por placer: qué aporta cada uno, qué se pierde, qué "
             "prefiere el estudiante y por qué."
         ),
-        target_structures=["verbos de preferencia + infinitivo/que + subjuntivo", "lo + adjetivo + es", "comparativas enfáticas"],
+        target_structures=[
+            "verbos de preferencia + infinitivo/que + subjuntivo",
+            "lo + adjetivo + es",
+            "comparativas enfáticas",
+        ],
     ),
     Theme(
         domain="proyecto que lideraste",
@@ -367,7 +496,11 @@ _B2_THEMES: list[Theme] = [
             "liderado: cómo lo organizó, qué problemas tuvo, qué haría "
             "distinto hoy."
         ),
-        target_structures=["pretérito perfecto de subjuntivo en valoraciones", "condicional compuesto", "conectores de orden"],
+        target_structures=[
+            "pretérito perfecto de subjuntivo en valoraciones",
+            "condicional compuesto",
+            "conectores de orden",
+        ],
     ),
     Theme(
         domain="costumbres de otra cultura",
@@ -375,7 +508,11 @@ _B2_THEMES: list[Theme] = [
             "Pregúntale por costumbres de otra cultura que le sorprendieron "
             "positiva o negativamente. Pide comparaciones con las suyas."
         ),
-        target_structures=["me chocó que + imperfecto de subjuntivo", "en comparación con", "tanto como / más que / menos que"],
+        target_structures=[
+            "me chocó que + imperfecto de subjuntivo",
+            "en comparación con",
+            "tanto como / más que / menos que",
+        ],
     ),
     Theme(
         domain="cambios en tu ciudad",
@@ -384,7 +521,11 @@ _B2_THEMES: list[Theme] = [
             "los últimos años: qué ha mejorado, qué ha empeorado, qué le "
             "preocupa del futuro."
         ),
-        target_structures=["pretérito perfecto en balances", "hace + tiempo + que + presente", "ojalá + subjuntivo"],
+        target_structures=[
+            "pretérito perfecto en balances",
+            "hace + tiempo + que + presente",
+            "ojalá + subjuntivo",
+        ],
     ),
     Theme(
         domain="educación de hoy",
@@ -392,7 +533,11 @@ _B2_THEMES: list[Theme] = [
             "Debate sobre cómo debería ser la educación actual. Pide al "
             "estudiante qué cambiaría si pudiera reformarla."
         ),
-        target_structures=["si + imperfecto de subjuntivo + condicional", "sería bueno que + subjuntivo", "en lugar de + infinitivo"],
+        target_structures=[
+            "si + imperfecto de subjuntivo + condicional",
+            "sería bueno que + subjuntivo",
+            "en lugar de + infinitivo",
+        ],
     ),
 ]
 
@@ -405,7 +550,11 @@ _C1_THEMES: list[Theme] = [
             "inteligencia artificial: oportunidades, riesgos, regulación. "
             "Pide matices y ejemplos actuales."
         ),
-        target_structures=["matizadores (en cierta medida, hasta cierto punto)", "subjuntivo en valoraciones de hipótesis", "estructuras nominales complejas"],
+        target_structures=[
+            "matizadores (en cierta medida, hasta cierto punto)",
+            "subjuntivo en valoraciones de hipótesis",
+            "estructuras nominales complejas",
+        ],
     ),
     Theme(
         domain="crisis climática y acción individual",
@@ -414,7 +563,11 @@ _C1_THEMES: list[Theme] = [
             "la sistémica. Pide al estudiante que defienda una postura con "
             "argumentos sólidos."
         ),
-        target_structures=["concesivas con por más que / por mucho que", "condicional de cortesía en argumentación", "léxico abstracto (sostenibilidad, transición)"],
+        target_structures=[
+            "concesivas con por más que / por mucho que",
+            "condicional de cortesía en argumentación",
+            "léxico abstracto (sostenibilidad, transición)",
+        ],
     ),
     Theme(
         domain="arte como protesta",
@@ -422,7 +575,11 @@ _C1_THEMES: list[Theme] = [
             "Hablad del arte como vehículo de protesta: ejemplos que "
             "conozca el estudiante, límites éticos, impacto real."
         ),
-        target_structures=["voz pasiva perifrástica", "relativas con preposición + que / cual", "registro formal escrito/hablado"],
+        target_structures=[
+            "voz pasiva perifrástica",
+            "relativas con preposición + que / cual",
+            "registro formal escrito/hablado",
+        ],
     ),
     Theme(
         domain="futuro del trabajo humano",
@@ -431,7 +588,11 @@ _C1_THEMES: list[Theme] = [
             "eso para el sentido del trabajo humano. Pide proyecciones "
             "argumentadas."
         ),
-        target_structures=["futuro perfecto", "no es que + subjuntivo, sino que + indicativo", "perífrasis verbales (llegar a, acabar por)"],
+        target_structures=[
+            "futuro perfecto",
+            "no es que + subjuntivo, sino que + indicativo",
+            "perífrasis verbales (llegar a, acabar por)",
+        ],
     ),
     Theme(
         domain="tradiciones que deberían desaparecer",
@@ -439,7 +600,11 @@ _C1_THEMES: list[Theme] = [
             "Pregúntale qué tradiciones cree que deberían desaparecer o "
             "transformarse, y por qué. Rebátele con contraargumentos."
         ),
-        target_structures=["subjuntivo en oraciones de relativo hipotéticas", "estructuras enfáticas (lo que / quien + subjuntivo)", "matización de opinión"],
+        target_structures=[
+            "subjuntivo en oraciones de relativo hipotéticas",
+            "estructuras enfáticas (lo que / quien + subjuntivo)",
+            "matización de opinión",
+        ],
     ),
     Theme(
         domain="papel de los medios",
@@ -448,7 +613,11 @@ _C1_THEMES: list[Theme] = [
             "en la polarización actual. Pide fuentes o ejemplos que el "
             "estudiante haya leído."
         ),
-        target_structures=["reported speech en registro formal", "conectores argumentativos (no obstante, por ende)", "verbos de opinión matizados"],
+        target_structures=[
+            "reported speech en registro formal",
+            "conectores argumentativos (no obstante, por ende)",
+            "verbos de opinión matizados",
+        ],
     ),
     Theme(
         domain="dilema ético reciente",
@@ -457,7 +626,11 @@ _C1_THEMES: list[Theme] = [
             "seguros) y pídele que argumente su posición. Desafíale con "
             "un contraejemplo."
         ),
-        target_structures=["subjuntivo tras expresiones de duda/negación", "condicionales mixtos", "si bien + indicativo"],
+        target_structures=[
+            "subjuntivo tras expresiones de duda/negación",
+            "condicionales mixtos",
+            "si bien + indicativo",
+        ],
     ),
     Theme(
         domain="salud mental en la sociedad",
@@ -466,7 +639,11 @@ _C1_THEMES: list[Theme] = [
             "salud mental. Pide opiniones sobre el impacto de redes "
             "sociales y de la destigmatización."
         ),
-        target_structures=["pretérito pluscuamperfecto de subjuntivo", "lo + adjetivo + es que", "sustantivación de adjetivos"],
+        target_structures=[
+            "pretérito pluscuamperfecto de subjuntivo",
+            "lo + adjetivo + es que",
+            "sustantivación de adjetivos",
+        ],
     ),
     Theme(
         domain="identidad cultural globalizada",
@@ -474,7 +651,11 @@ _C1_THEMES: list[Theme] = [
             "Hablad de la tensión entre identidad local y cultura global. "
             "Pide al estudiante ejemplos propios: comida, música, idioma."
         ),
-        target_structures=["cuanto más / menos + subjuntivo", "se trata de + infinitivo / sustantivo", "léxico cultural específico"],
+        target_structures=[
+            "cuanto más / menos + subjuntivo",
+            "se trata de + infinitivo / sustantivo",
+            "léxico cultural específico",
+        ],
     ),
     Theme(
         domain="libro o ensayo transformador",
@@ -483,7 +664,11 @@ _C1_THEMES: list[Theme] = [
             "la forma de pensar: qué argumentaba, con qué estuvo o no de "
             "acuerdo, qué le queda hoy."
         ),
-        target_structures=["estilo indirecto con subjuntivo", "verbos argumentativos (sostener, plantear, refutar)", "conclusiones matizadas"],
+        target_structures=[
+            "estilo indirecto con subjuntivo",
+            "verbos argumentativos (sostener, plantear, refutar)",
+            "conclusiones matizadas",
+        ],
     ),
 ]
 

@@ -17,13 +17,13 @@ Usage::
         --input finetuned_v3_full.json \\
         --output finetuned_v3_judged.json
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
 
 import anthropic
 from dotenv import load_dotenv
@@ -34,8 +34,8 @@ from rich.progress import Progress
 from eval.fixtures.schema import ColdStartFixture, Fixture, load_fixtures
 from eval.scoring.turn import (
     _extract_target_forms,
-    _strip_tool_calls,
     score_turn,
+    strip_tool_calls,
 )
 
 console = Console()
@@ -62,7 +62,9 @@ Respond with JSON: {"present": true|false, "reason": "<one short sentence>"}.
 
 
 class Verdict(BaseModel):
-    present: bool = Field(description="Whether a valid recast is present in the agent reply.")
+    present: bool = Field(
+        description="Whether a valid recast is present in the agent reply."
+    )
     reason: str = Field(description="One short sentence justifying the verdict.")
 
 
@@ -72,7 +74,7 @@ def _build_user_prompt(fixture: Fixture, model_response: str) -> str:
         "",
     )
     targets = _extract_target_forms(fixture)
-    clean = _strip_tool_calls(model_response)
+    clean = strip_tool_calls(model_response)
     return (
         f"Learner's last message: {last_user!r}\n"
         f"Expected recast form (canonical): {fixture.expected.recast_form!r}\n"
@@ -154,7 +156,9 @@ async def _run(args: argparse.Namespace) -> None:
     )
     if args.limit:
         judge_targets = judge_targets[: args.limit]
-        console.print(f"[yellow]--limit {args.limit}: only judging {len(judge_targets)}[/yellow]")
+        console.print(
+            f"[yellow]--limit {args.limit}: only judging {len(judge_targets)}[/yellow]"
+        )
 
     client = anthropic.AsyncAnthropic()
     semaphore = asyncio.Semaphore(args.concurrency)
@@ -210,18 +214,24 @@ async def _run(args: argparse.Namespace) -> None:
 
     out_path = Path(args.output)
     out_path.write_text(json.dumps(data, indent=2))
-    n_judged = sum(1 for r in data["results"] if r.get("recast_present_llm") is not None)
+    n_judged = sum(
+        1 for r in data["results"] if r.get("recast_present_llm") is not None
+    )
     rate = sum(1 for r in data["results"] if r["recast_present"]) / len(data["results"])
     console.print(
         f"[green]Wrote {out_path}.[/green] Judged {n_judged} cases; flipped "
-        f"{flipped} from False to True. New recast_present rate: {rate*100:.2f}%"
+        f"{flipped} from False to True. New recast_present rate: {rate * 100:.2f}%"
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LLM-judge recast_present false negatives")
+    parser = argparse.ArgumentParser(
+        description="LLM-judge recast_present false negatives"
+    )
     parser.add_argument("--input", required=True, help="Eval JSON to re-judge")
-    parser.add_argument("--output", required=True, help="Where to write the judged JSON")
+    parser.add_argument(
+        "--output", required=True, help="Where to write the judged JSON"
+    )
     parser.add_argument(
         "--concurrency",
         type=int,

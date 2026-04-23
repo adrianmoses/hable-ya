@@ -1,4 +1,5 @@
 """LearnerProfileRepo — snapshot read + mutations."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -66,9 +67,9 @@ async def test_rolling_means_reflect_recent_turns(
     await _insert_session(clean_learner_state)
     base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
     rows = [
-        ("weak", True),     # 0.3, 1.0
-        ("weak", False),    # 0.3, 0.0
-        ("moderate", True), # 0.6, 1.0
+        ("weak", True),  # 0.3, 1.0
+        ("weak", False),  # 0.3, 0.0
+        ("moderate", True),  # 0.6, 1.0
         ("strong", False),  # 0.9, 0.0
         ("strong", False),  # 0.9, 0.0
     ]
@@ -93,13 +94,19 @@ async def test_window_limits_to_most_recent_turns(
     base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
     # Insert one strong+no-L1 old turn, then 3 weak+L1 recent turns
     await _insert_turn(
-        clean_learner_state, session_id="s1", at=base.replace(hour=10),
-        fluency="strong", l1_used=False,
+        clean_learner_state,
+        session_id="s1",
+        at=base.replace(hour=10),
+        fluency="strong",
+        l1_used=False,
     )
     for i in range(3):
         await _insert_turn(
-            clean_learner_state, session_id="s1", at=base.replace(minute=i),
-            fluency="weak", l1_used=True,
+            clean_learner_state,
+            session_id="s1",
+            at=base.replace(minute=i),
+            fluency="weak",
+            l1_used=True,
         )
 
     repo = LearnerProfileRepo(clean_learner_state)
@@ -160,5 +167,3 @@ async def test_set_band_persists(clean_learner_state: asyncpg.Pool) -> None:
     await repo.set_band("B1")
     snapshot = await repo.get()
     assert snapshot.band == "B1"
-
-

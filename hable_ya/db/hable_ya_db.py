@@ -3,6 +3,7 @@
 In this slice (spec 028) the class is a near-stub — only `ping()` is wired, for
 the health endpoint. The real query layer lives in consumer specs.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,9 +20,7 @@ class HableYaDB:
 
     async def ping(self) -> bool:
         try:
-            value = await asyncio.wait_for(
-                self._pool.fetchval("SELECT 1"), timeout=0.5
-            )
+            value = await asyncio.wait_for(self._pool.fetchval("SELECT 1"), timeout=0.5)
         except (TimeoutError, asyncpg.PostgresError, OSError) as exc:
             logger.warning("DB ping failed: %s", exc)
             return False

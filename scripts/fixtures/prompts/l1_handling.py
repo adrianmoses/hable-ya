@@ -1,4 +1,5 @@
 """l1_handling — scaled fixture generation with variance axes."""
+
 from __future__ import annotations
 
 import random
@@ -15,9 +16,16 @@ SCENARIOS = [
 ]
 
 DOMAINS = [
-    "food_and_cooking", "family_and_friends", "work_and_study",
-    "travel_and_transport", "weekend_plans", "hobbies_and_music",
-    "health_and_sports", "city_life", "weather_and_seasons", "shopping",
+    "food_and_cooking",
+    "family_and_friends",
+    "work_and_study",
+    "travel_and_transport",
+    "weekend_plans",
+    "hobbies_and_music",
+    "health_and_sports",
+    "city_life",
+    "weather_and_seasons",
+    "shopping",
 ]
 
 

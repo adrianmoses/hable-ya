@@ -9,6 +9,7 @@ spec-029 merge time.
 Runs against a short-lived `spec029_spike_graph` graph created + dropped
 per test (using the spec-028 `drop_graph('name'::name, true)` convention).
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

@@ -1,4 +1,5 @@
 """build_system_prompt() output tests."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -167,9 +168,7 @@ async def test_pool_with_populated_profile_surfaces_errors_and_vocab(
         "hable_ya.pipeline.prompts.builder.LearnerProfileRepo",
         lambda _pool: mock_repo,
     )
-    prompt = await build_system_prompt(
-        {}, pool=_FakePool(), recent_domains=[]
-    )
+    prompt = await build_system_prompt({}, pool=_FakePool(), recent_domains=[])
     assert "ser_estar" in prompt
     assert "comer" in prompt
     assert "manzana" in prompt
@@ -202,7 +201,5 @@ async def test_pool_passes_recent_domains_to_theme_selection(
         "hable_ya.pipeline.prompts.builder.get_session_theme",
         recording_get_theme,
     )
-    await build_system_prompt(
-        {}, pool=_FakePool(), recent_domains=["a", "b"]
-    )
+    await build_system_prompt({}, pool=_FakePool(), recent_domains=["a", "b"])
     assert observed_domains == [["a", "b"]]

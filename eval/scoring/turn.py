@@ -1,4 +1,5 @@
 """score_turn() and TurnResult."""
+
 from __future__ import annotations
 
 import ast
@@ -169,9 +170,7 @@ def parse_tool_calls(
         # Skip if this position was already covered by the [TOOL_CALL:] match
         # above (avoids double-counting when both forms accidentally coexist).
         if any(
-            r["name"] == name
-            and isinstance(r["arguments"], dict)
-            and r["arguments"]
+            r["name"] == name and isinstance(r["arguments"], dict) and r["arguments"]
             for r in results
         ):
             continue
@@ -333,7 +332,8 @@ def score_turn(
                 args = call["arguments"]
                 utterance = args.get("learner_utterance", "")
                 has_errors = any(
-                    args.get(k) for k in ("errors", "errors_observed", "errors_detected")
+                    args.get(k)
+                    for k in ("errors", "errors_observed", "errors_detected")
                 )
                 if utterance == last_user_turn and has_errors:
                     sig_tool_args = True

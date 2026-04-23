@@ -1,4 +1,5 @@
 """Consolidate _approved/<category>/*.json into final category JSON files."""
+
 from __future__ import annotations
 
 import argparse
@@ -59,10 +60,13 @@ def _collect(category: str) -> list[dict]:
     out: list[dict] = []
     for f in sorted(cat_dir.glob("*.json")):
         data = json.loads(f.read_text())
-        model_cls = ColdStartFixture if data.get("type") == "cold_start_sequence" else Fixture
-        data = _strip_to_model(data, model_cls)
-        parse_fixture(data)  # validates
-        out.append(data)
+        model_cls = (
+            ColdStartFixture if data.get("type") == "cold_start_sequence" else Fixture
+        )
+        stripped = _strip_to_model(data, model_cls)
+        assert isinstance(stripped, dict)
+        parse_fixture(stripped)  # validates
+        out.append(stripped)
     return out
 
 

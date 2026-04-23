@@ -1,4 +1,5 @@
 """Prompt templates for fixture generation."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -17,7 +18,7 @@ ERROR_TYPES_BY_BAND: dict[CEFRBand, list[str]] = {
 
 ALL_ERROR_TYPES = sorted({t for types in ERROR_TYPES_BY_BAND.values() for t in types})
 
-from . import (
+from . import (  # noqa: E402  (submodules import ERROR_TYPES_BY_BAND from this file)
     cold_start,
     error_pattern_threshold,
     l1_handling,
@@ -50,14 +51,14 @@ CATEGORIES: dict[str, BuildPrompts] = {
 # recast_present failures — both bands get extra weight in single_error_recast.
 TARGET_COUNTS: dict[str, dict[CEFRBand, int]] = {
     # Fine-tune targets — scaled.
-    "single_error_recast":   {"A1": 150, "A2": 120, "B1": 100, "B2": 100, "C1": 150},
-    "multi_error":           {"A1": 60,  "A2": 60,  "B1": 60,  "B2": 60,  "C1": 60},
-    "tool_call_correctness": {"A1": 40,  "A2": 30,  "B1": 30,  "B2": 30,  "C1": 30},
+    "single_error_recast": {"A1": 150, "A2": 120, "B1": 100, "B2": 100, "C1": 150},
+    "multi_error": {"A1": 60, "A2": 60, "B1": 60, "B2": 60, "C1": 60},
+    "tool_call_correctness": {"A1": 40, "A2": 30, "B1": 30, "B2": 30, "C1": 30},
     # Prompt-engineering territory — left at original small counts (current
     # eval metrics already pass for these). Scale only if a regression appears.
-    "l1_handling":           {"A1": 5,  "A2": 5,  "B1": 5,  "B2": 5,  "C1": 5},
-    "mimicry_cycle":         {"A1": 15},
-    "cold_start":            {"A1": 4,  "A2": 4,  "B1": 4,  "B2": 4,  "C1": 4},
-    "register_boundary":     {"A1": 4,  "A2": 4,  "B1": 4,  "B2": 4,  "C1": 4},
+    "l1_handling": {"A1": 5, "A2": 5, "B1": 5, "B2": 5, "C1": 5},
+    "mimicry_cycle": {"A1": 15},
+    "cold_start": {"A1": 4, "A2": 4, "B1": 4, "B2": 4, "C1": 4},
+    "register_boundary": {"A1": 4, "A2": 4, "B1": 4, "B2": 4, "C1": 4},
     "error_pattern_threshold": {"A1": 4, "A2": 4, "B1": 4, "B2": 4, "C1": 4},
 }

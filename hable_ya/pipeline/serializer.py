@@ -5,6 +5,7 @@ directions, no framing) with Pipecat's frame system. Without this, Pipecat's
 FastAPIWebsocketTransport silently drops every inbound message when its
 `serializer` param is None (see pipecat/transports/websocket/fastapi.py).
 """
+
 from __future__ import annotations
 
 from pipecat.frames.frames import Frame, InputAudioRawFrame, OutputAudioRawFrame

@@ -10,6 +10,7 @@ Mounted only when ``settings.dev_endpoints_enabled`` is true.
   recent theme domains; correlates with ``/dev/observations`` so a reviewer
   can see the profile update produced by each turn.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict

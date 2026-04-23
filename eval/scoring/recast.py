@@ -1,10 +1,10 @@
 """recast_present and recast_explicit checks."""
+
 from __future__ import annotations
 
 import functools
 import re
 import warnings
-
 
 # POS tags that carry the corrected-form's identity. Excludes PRON (person
 # flips like me/te/le are expected in recasts) and ADV (modifiers like
@@ -15,13 +15,29 @@ _CONTENT_POS = {"VERB", "AUX", "NOUN", "PROPN", "ADJ"}
 # instead of the infinitive (a known gap in `es_core_news_sm` for some
 # 1st-person and irregular forms — e.g. `cocino` -> `cocino` instead of
 # `cocinar`). When this happens we fall back to a 4-char stem prefix.
-_VERB_SUFFIXES = ("ar", "er", "ir", "o", "as", "es", "amos", "emos", "imos",
-                  "an", "en", "aba", "ía", "ó", "é", "í")
+_VERB_SUFFIXES = (
+    "ar",
+    "er",
+    "ir",
+    "o",
+    "as",
+    "es",
+    "amos",
+    "emos",
+    "imos",
+    "an",
+    "en",
+    "aba",
+    "ía",
+    "ó",
+    "é",
+    "í",
+)
 _STEM_LEN = 4
 
 
 @functools.lru_cache(maxsize=1)
-def _nlp():  # type: ignore[no-untyped-def]
+def _nlp():
     """Lazy-load the Spanish spaCy model. Disable parser/NER (not needed)."""
     import spacy
 
@@ -91,7 +107,8 @@ def _matches(target: str, response_keys: set[str]) -> bool:
     if not tgt_tokens:
         return False
     matched = sum(
-        1 for lemma, stem in tgt_tokens
+        1
+        for lemma, stem in tgt_tokens
         if lemma in response_keys or stem in response_keys
     )
     return matched * 2 >= len(tgt_tokens)

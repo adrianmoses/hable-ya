@@ -11,6 +11,7 @@ Buffers every `LLMTextFrame` between `LLMFullResponseStartFrame` and
 3. Emit a single cleaned `LLMTextFrame` with all tool-call syntax stripped so
    the tool text never reaches TTS.
 """
+
 from __future__ import annotations
 
 import logging

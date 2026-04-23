@@ -9,6 +9,7 @@ All methods accept an `asyncpg.Connection` so the caller (the ingest
 service) can compose them inside a shared transaction with `turns`,
 vocabulary, and the AGE graph writes.
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,9 +72,7 @@ class ErrorRepo:
         return categories
 
     @staticmethod
-    async def top_categories(
-        conn: asyncpg.Connection, *, limit: int = 3
-    ) -> list[str]:
+    async def top_categories(conn: asyncpg.Connection, *, limit: int = 3) -> list[str]:
         rows = await conn.fetch(
             """
             SELECT category FROM error_counts

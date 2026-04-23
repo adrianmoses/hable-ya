@@ -6,6 +6,7 @@ Services (STT/LLM/TTS) are injected from the module-level shared pool in
 `app.state`. Per-session state (transport, LLM context, aggregators, custom
 processors) is built fresh inside the call.
 """
+
 from __future__ import annotations
 
 import logging

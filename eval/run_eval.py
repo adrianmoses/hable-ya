@@ -8,13 +8,13 @@ Usage::
     python -m eval.run_eval --base-url http://localhost:8080 --output results.json
     python -m eval.run_eval --categories single_error_recast,multi_error --output results.json
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +24,7 @@ from rich.progress import Progress
 
 from eval.fixtures.schema import ColdStartFixture, Fixture, load_fixtures
 from eval.scoring.turn import EvalOutput, TurnResult, score_turn
-from finetune.format import _render_system_prompt
+from finetune.format import render_system_prompt
 
 console = Console()
 
@@ -32,9 +32,7 @@ console = Console()
 # rules, no recast instructions, no tool-call schema, no forbidden phrases.
 # This is the "unprompted baseline" mode: what does the raw model do when
 # you only tell it what role to play?
-MINIMAL_SYSTEM_PROMPT = (
-    "You are a Spanish conversation partner for a language learner."
-)
+MINIMAL_SYSTEM_PROMPT = "You are a Spanish conversation partner for a language learner."
 
 # ---------------------------------------------------------------------------
 # Model calling
@@ -68,7 +66,7 @@ async def call_model(
     system_content = (
         MINIMAL_SYSTEM_PROMPT
         if minimal_prompt
-        else _render_system_prompt(
+        else render_system_prompt(
             fixture.system_params, band=fixture.metadata.cefr_band
         )
     )
@@ -86,7 +84,7 @@ async def call_model(
         response = await asyncio.wait_for(
             client.chat.completions.create(
                 model="gemma-4-e4b",
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 temperature=0.0,
                 max_tokens=max_tokens,
                 extra_body=extra_body or None,
@@ -153,8 +151,12 @@ def compute_aggregates(results: list[TurnResult]) -> dict[str, Any]:
         band_results = [r for r in results if r.cefr_band == band]
         bn = len(band_results)
         by_band[band] = {
-            "pedagogical": round(sum(r.pedagogical_score for r in band_results) / bn, 4),
-            "tool_fidelity": round(sum(r.tool_fidelity_score for r in band_results) / bn, 4),
+            "pedagogical": round(
+                sum(r.pedagogical_score for r in band_results) / bn, 4
+            ),
+            "tool_fidelity": round(
+                sum(r.tool_fidelity_score for r in band_results) / bn, 4
+            ),
             "composite": round(sum(r.composite_score for r in band_results) / bn, 4),
             "n": bn,
         }
@@ -201,11 +203,7 @@ async def run_eval(args: argparse.Namespace) -> EvalOutput:
     # Filter by category if requested
     if args.categories:
         cats = {c.strip() for c in args.categories.split(",")}
-        standard = [
-            f
-            for f in standard
-            if any(f.id.startswith(cat) for cat in cats)
-        ]
+        standard = [f for f in standard if any(f.id.startswith(cat) for cat in cats)]
 
     prompt_mode = "minimal (baseline)" if args.minimal_prompt else "engineered"
     console.print(
@@ -228,7 +226,10 @@ async def run_eval(args: argparse.Namespace) -> EvalOutput:
         async def process_fixture(fixture: Fixture) -> None:
             try:
                 response_text, tool_calls = await call_model(
-                    client, fixture, semaphore, args.timeout,
+                    client,
+                    fixture,
+                    semaphore,
+                    args.timeout,
                     minimal_prompt=args.minimal_prompt,
                     max_tokens=args.max_tokens,
                     no_thinking=args.no_thinking,
@@ -253,7 +254,7 @@ async def run_eval(args: argparse.Namespace) -> EvalOutput:
 
     output = EvalOutput(
         run_id=str(uuid.uuid4()),
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         base_url=args.base_url,
         fixture_count=len(standard),
         cold_start_skipped=cold_start_count,

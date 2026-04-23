@@ -6,6 +6,7 @@ Uses ``httpx.AsyncClient`` + ``ASGITransport`` rather than FastAPI's
 can't share the session-scoped ``db_pool`` without tripping asyncpg's
 "another operation is in progress" guard.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

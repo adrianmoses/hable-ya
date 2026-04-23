@@ -8,6 +8,7 @@ Lets the generator produce hundreds of structurally-distinct prompts per
 
 Sampling is seeded from (band, index, salt) so a given build is reproducible.
 """
+
 from __future__ import annotations
 
 import random

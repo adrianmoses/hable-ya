@@ -13,6 +13,7 @@ cold paths). ``build_session_prompt`` returns a :class:`SessionPrompt` with
 the same rendered string plus the resolved theme and band — the session
 handler needs both to thread through to ``TurnIngestService.start_session``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

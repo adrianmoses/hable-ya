@@ -1,4 +1,5 @@
 """Unit tests for HableYaToolHandler (log_turn parser + TTS-strip processor)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,9 +17,7 @@ from hable_ya.pipeline.processors.tool_handler import HableYaToolHandler
 from hable_ya.runtime.observations import TurnObservationSink
 
 
-async def _drive(
-    handler: HableYaToolHandler, frames: list[Frame]
-) -> list[Frame]:
+async def _drive(handler: HableYaToolHandler, frames: list[Frame]) -> list[Frame]:
     """Feed frames through the handler; capture everything pushed downstream.
 
     Bypasses FrameProcessor's pipeline-lifecycle machinery (started flags,

@@ -1,4 +1,5 @@
 """Tests for the prompt-builder variance helpers."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -57,7 +58,7 @@ class TestSampleAxes:
         c = Counter(samples)
         # Each bucket should be within ±5pp of 33%.
         for sig in FLUENCY_SIGNALS:
-            assert 0.28 <= c[sig] / 1500 <= 0.39, f"{sig} skew: {c[sig]/1500:.2f}"
+            assert 0.28 <= c[sig] / 1500 <= 0.39, f"{sig} skew: {c[sig] / 1500:.2f}"
 
 
 class TestPickSurfaceForm:

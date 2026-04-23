@@ -13,6 +13,7 @@ Invalid inputs are logged and skipped rather than raising; the caller gets an
 empty return, so a stray ``O'Brien`` lemma doesn't tear down the whole ingest
 transaction.
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,9 +72,7 @@ async def ensure_scenario_nodes(conn: asyncpg.Connection) -> None:
             )
 
 
-async def upsert_vocab(
-    conn: asyncpg.Connection, *, lemma: str, at: datetime
-) -> None:
+async def upsert_vocab(conn: asyncpg.Connection, *, lemma: str, at: datetime) -> None:
     safe_lemma = _safe(lemma)
     safe_at = _safe(at.isoformat())
     if safe_lemma is None or safe_at is None:
@@ -110,9 +109,7 @@ async def upsert_error_pattern(
     safe_category = _safe(category)
     safe_at = _safe(at.isoformat())
     if safe_category is None or safe_at is None:
-        logger.warning(
-            "skipping error upsert — unsafe input (%r @ %s)", category, at
-        )
+        logger.warning("skipping error upsert — unsafe input (%r @ %s)", category, at)
         return
     await _run_cypher(
         conn,

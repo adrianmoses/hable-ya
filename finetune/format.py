@@ -5,6 +5,7 @@ system-prompt renderer and log_turn normalization logic live in
 ``hable_ya.pipeline.prompts.render`` so the runtime and training paths share one
 source of truth.
 """
+
 from __future__ import annotations
 
 import json

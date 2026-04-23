@@ -3,11 +3,12 @@
 Every fixture file under ``eval/fixtures/*.json`` must parse against one of
 the models here. See ``habla_fixture_spec.md`` for the full specification.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
@@ -130,12 +131,14 @@ class ColdStartFixture(_Strict):
 
 
 AnyFixture = Annotated[
-    Union[ColdStartFixture, Fixture],
+    ColdStartFixture | Fixture,
     Field(discriminator="type"),
 ]
 
-_FIXTURE_ADAPTER = TypeAdapter(AnyFixture)
-_FIXTURE_LIST_ADAPTER = TypeAdapter(list[AnyFixture])
+_FIXTURE_ADAPTER: TypeAdapter[ColdStartFixture | Fixture] = TypeAdapter(AnyFixture)
+_FIXTURE_LIST_ADAPTER: TypeAdapter[list[ColdStartFixture | Fixture]] = TypeAdapter(
+    list[AnyFixture]
+)
 
 
 CATEGORY_FILES = [

@@ -1,4 +1,5 @@
 """check_register_heuristic()"""
+
 from __future__ import annotations
 
 import re

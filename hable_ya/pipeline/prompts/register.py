@@ -6,6 +6,7 @@ The register map is the single source of truth in
 is a short Spanish guidance string used when the learner is on session 1 (no
 real diagnostic flow in this slice — see spec 023).
 """
+
 from __future__ import annotations
 
 from hable_ya.pipeline.prompts.render import REGISTER_GUIDANCE

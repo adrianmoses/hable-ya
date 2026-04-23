@@ -5,6 +5,7 @@ session. Persists each observation as one JSON line to a configurable path
 (dev artifact; spec #026 replaces this with the durable learner DB) and keeps
 a bounded ring buffer in memory for ``GET /dev/observations``.
 """
+
 from __future__ import annotations
 
 import asyncio

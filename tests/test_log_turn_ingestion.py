@@ -1,4 +1,5 @@
 """End-to-end ingestion: TurnObservation → relational + AGE graph."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -56,18 +57,14 @@ async def test_ingest_populates_turns_errors_vocab_and_graph(
     ingest = TurnIngestService(ingest_ready)
     at = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
     obs = _obs(
-        errors=[
-            {"type": "ser_estar", "produced_form": "soy", "target_form": "estoy"}
-        ],
+        errors=[{"type": "ser_estar", "produced_form": "soy", "target_form": "estoy"}],
         at=at,
     )
     await ingest.ingest(obs)
 
     async with ingest_ready.acquire() as conn:
         turn_rows = await conn.fetch("SELECT session_id FROM turns")
-        error_rows = await conn.fetch(
-            "SELECT category, count FROM error_counts"
-        )
+        error_rows = await conn.fetch("SELECT category, count FROM error_counts")
         vocab_rows = await conn.fetch(
             "SELECT lemma, production_count FROM vocabulary_items"
         )
