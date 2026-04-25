@@ -94,7 +94,13 @@ def test_overall_round_trips_through_dump() -> None:
         recast_naturalness=4,
         learner_production_space=4,
         coherence=4,
-        rationale={},
+        rationale={
+            "pedagogical_flow": "ok",
+            "level_consistency": "ok",
+            "recast_naturalness": "ok",
+            "learner_production_space": "ok",
+            "coherence": "ok",
+        },
         stop_reason="budget_reached",
     )
     dumped = v.model_dump()
@@ -114,9 +120,9 @@ def test_judge_user_prompt_includes_persona_and_numbered_turns() -> None:
     assert "Para dos persona" in prompt
 
 
-def test_judge_system_prompt_is_stable_per_version() -> None:
-    # Tied to JUDGE_SYSTEM_VERSION = "1". Bump the version when text changes.
-    assert JUDGE_SYSTEM_VERSION == "1"
+def test_judge_system_prompt_mentions_all_dims_and_stop_reason() -> None:
+    # Bumping JUDGE_SYSTEM_VERSION invalidates the on-disk verdict cache.
+    assert JUDGE_SYSTEM_VERSION
     assert "pedagogical_flow" in JUDGE_SYSTEM
     assert "level_consistency" in JUDGE_SYSTEM
     assert "recast_naturalness" in JUDGE_SYSTEM
@@ -153,7 +159,13 @@ async def test_judge_session_cache_hit_skips_api_call(tmp_path: Path) -> None:
             recast_naturalness=4,
             learner_production_space=3,
             coherence=4,
-            rationale={"pedagogical_flow": "from cache"},
+            rationale={
+                "pedagogical_flow": "cached",
+                "level_consistency": "cached",
+                "recast_naturalness": "cached",
+                "learner_production_space": "cached",
+                "coherence": "cached",
+            },
             stop_reason="budget_reached",
         ).model_dump(),
     )

@@ -26,7 +26,7 @@ from eval.agent._cache import JsonDiskCache
 from eval.agent.personas.schema import Persona
 from eval.fixtures.schema import ConversationTurn
 
-JUDGE_SYSTEM_VERSION: Final[str] = "1"
+JUDGE_SYSTEM_VERSION: Final[str] = "2"
 DEFAULT_JUDGE_MODEL: Final[str] = "claude-opus-4-7"
 
 JUDGE_SYSTEM = (
@@ -89,18 +89,23 @@ JUDGE_SYSTEM = (
 )
 
 
+class Rationale(BaseModel):
+    """One short sentence per dimension. All fields required."""
+
+    pedagogical_flow: str = Field(min_length=1)
+    level_consistency: str = Field(min_length=1)
+    recast_naturalness: str = Field(min_length=1)
+    learner_production_space: str = Field(min_length=1)
+    coherence: str = Field(min_length=1)
+
+
 class SessionVerdict(BaseModel):
     pedagogical_flow: int = Field(ge=1, le=5)
     level_consistency: int = Field(ge=1, le=5)
     recast_naturalness: int = Field(ge=1, le=5)
     learner_production_space: int = Field(ge=1, le=5)
     coherence: int = Field(ge=1, le=5)
-    rationale: dict[str, str] = Field(
-        description=(
-            "One short sentence per dimension, keyed by dimension name "
-            "(e.g. 'pedagogical_flow')."
-        )
-    )
+    rationale: Rationale
     stop_reason: Literal["budget_reached", "agent_derailed", "learner_abandoned"]
 
     @computed_field  # type: ignore[prop-decorator]

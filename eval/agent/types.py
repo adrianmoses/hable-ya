@@ -4,7 +4,8 @@
 the in-memory shape the `ProfileAccumulator` keeps for each agent turn —
 it mirrors what `LearnerProfileRepo` reads back from the `turns` table
 plus the parsed-out errors/vocab so the accumulator can update its
-counters in place.
+counters in place. `SessionRecord` and `AgentEvalOutput` are the
+JSON-serialized output shapes; they parallel `eval.run_eval.EvalOutput`.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from eval.agent.opus_judge import SessionVerdict
 from eval.fixtures.schema import (
     CEFRBand,
     ConversationTurn,
@@ -46,9 +48,10 @@ class SessionRecord(BaseModel):
     persona_id: str
     cefr_band: CEFRBand
     scenario_domain: str
+    error_patterns: list[str]
     transcript: list[ConversationTurn]
     turn_records: list[TurnRecord]
-    verdict: dict[str, Any]
+    verdict: SessionVerdict
     model_label: str
     elapsed_s: float
 
