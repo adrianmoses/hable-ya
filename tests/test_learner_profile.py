@@ -1,12 +1,20 @@
-"""LearnerProfileRepo — snapshot read + mutations."""
+"""LearnerProfileRepo — DB integration tests.
+
+The aggregation rules are tested in `test_aggregations_shared.py`. This file
+covers the repo's responsibilities: shaping SQL rows into the inputs that
+`compute_snapshot` expects, applying the rolling window via SQL LIMIT, and
+the small mutation methods.
+"""
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 
 import asyncpg
 import pytest
 
+from hable_ya.learner.aggregations import compute_snapshot
 from hable_ya.learner.profile import LearnerProfileRepo
 
 
@@ -61,38 +69,12 @@ async def test_cold_start_snapshot_uses_neutral_defaults(
     assert snapshot.vocab_strengths == []
 
 
-async def test_rolling_means_reflect_recent_turns(
-    clean_learner_state: asyncpg.Pool,
-) -> None:
-    await _insert_session(clean_learner_state)
-    base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
-    rows = [
-        ("weak", True),  # 0.3, 1.0
-        ("weak", False),  # 0.3, 0.0
-        ("moderate", True),  # 0.6, 1.0
-        ("strong", False),  # 0.9, 0.0
-        ("strong", False),  # 0.9, 0.0
-    ]
-    for i, (fluency, l1) in enumerate(rows):
-        at = base.replace(minute=i)
-        await _insert_turn(
-            clean_learner_state, session_id="s1", at=at, fluency=fluency, l1_used=l1
-        )
-
-    repo = LearnerProfileRepo(clean_learner_state)
-    snapshot = await repo.get(window_turns=20)
-    expected_l1 = 2 / 5
-    expected_fluency = (0.3 + 0.3 + 0.6 + 0.9 + 0.9) / 5
-    assert snapshot.l1_reliance == pytest.approx(expected_l1)
-    assert snapshot.speech_fluency == pytest.approx(expected_fluency)
-
-
 async def test_window_limits_to_most_recent_turns(
     clean_learner_state: asyncpg.Pool,
 ) -> None:
+    """Validates the SQL ORDER BY timestamp DESC LIMIT N — the repo's job."""
     await _insert_session(clean_learner_state)
     base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
-    # Insert one strong+no-L1 old turn, then 3 weak+L1 recent turns
     await _insert_turn(
         clean_learner_state,
         session_id="s1",
@@ -111,34 +93,43 @@ async def test_window_limits_to_most_recent_turns(
 
     repo = LearnerProfileRepo(clean_learner_state)
     snapshot = await repo.get(window_turns=3)
-    # Only the 3 recent ones should count: all L1_used=True, all weak.
     assert snapshot.l1_reliance == pytest.approx(1.0)
     assert snapshot.speech_fluency == pytest.approx(0.3)
 
 
-async def test_top_errors_reflect_error_counts_ordering(
+async def test_repo_delegates_to_compute_snapshot(
     clean_learner_state: asyncpg.Pool,
 ) -> None:
-    at = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
+    """Equivalence guard: repo.get and compute_snapshot agree on the same DB state.
+
+    This is the contract that lets the agent-eval accumulator share the
+    aggregation core without drifting from production.
+    """
+    await _insert_session(clean_learner_state)
+    base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
+    turns = [
+        ("weak", True),
+        ("moderate", False),
+        ("strong", True),
+        ("weak", False),
+    ]
+    for i, (fluency, l1) in enumerate(turns):
+        await _insert_turn(
+            clean_learner_state,
+            session_id="s1",
+            at=base.replace(minute=i),
+            fluency=fluency,
+            l1_used=l1,
+        )
+
+    err_at = base.replace(hour=11)
     async with clean_learner_state.acquire() as conn:
         await conn.execute(
             "INSERT INTO error_counts (category, count, last_seen_at) VALUES "
-            "('ser_estar', 5, $1), ('agreement', 3, $1), ('tense', 1, $1), "
-            "('prepositions', 4, $1)",
-            at,
+            "('ser_estar', 5, $1), ('agreement', 3, $1), ('tense', 1, $1)",
+            err_at,
         )
-
-    repo = LearnerProfileRepo(clean_learner_state)
-    snapshot = await repo.get(top_errors=3)
-    assert snapshot.error_patterns == ["ser_estar", "prepositions", "agreement"]
-
-
-async def test_top_vocab_reflects_last_seen_ordering(
-    clean_learner_state: asyncpg.Pool,
-) -> None:
-    async with clean_learner_state.acquire() as conn:
-        base = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
-        for i, lemma in enumerate(["uno", "dos", "tres", "cuatro", "cinco", "seis"]):
+        for i, lemma in enumerate(["alpha", "beta", "gamma"]):
             last_seen = base.replace(minute=i)
             await conn.execute(
                 "INSERT INTO vocabulary_items (lemma, sample_form, "
@@ -149,8 +140,36 @@ async def test_top_vocab_reflects_last_seen_ordering(
             )
 
     repo = LearnerProfileRepo(clean_learner_state)
-    snapshot = await repo.get(top_vocab=3)
-    assert snapshot.vocab_strengths == ["seis", "cinco", "cuatro"]
+    repo_snapshot = await repo.get(window_turns=20, top_errors=3, top_vocab=3)
+
+    # Reconstruct compute_snapshot inputs from the same DB state.
+    async with clean_learner_state.acquire() as conn:
+        turn_rows = await conn.fetch(
+            "SELECT L1_used, fluency_signal FROM turns "
+            "ORDER BY timestamp DESC LIMIT 20"
+        )
+        error_rows = await conn.fetch(
+            "SELECT category, count, last_seen_at FROM error_counts"
+        )
+        vocab_rows = await conn.fetch(
+            "SELECT lemma, last_seen_at FROM vocabulary_items "
+            "ORDER BY last_seen_at DESC LIMIT 3"
+        )
+
+    direct = compute_snapshot(
+        band="A2",
+        sessions_completed=0,
+        l1_used_flags=[bool(r["l1_used"]) for r in turn_rows],
+        fluency_signals=[r["fluency_signal"] for r in turn_rows],
+        error_counter=Counter(
+            {r["category"]: int(r["count"]) for r in error_rows}
+        ),
+        error_last_seen={r["category"]: r["last_seen_at"] for r in error_rows},
+        vocab_last_seen={r["lemma"]: r["last_seen_at"] for r in vocab_rows},
+        top_errors=3,
+        top_vocab=3,
+    )
+    assert repo_snapshot == direct
 
 
 async def test_increment_session_count(clean_learner_state: asyncpg.Pool) -> None:
