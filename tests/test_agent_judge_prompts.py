@@ -43,65 +43,73 @@ def _transcript() -> list[ConversationTurn]:
 
 
 def test_session_verdict_validates_bounds() -> None:
-    v = SessionVerdict(
-        pedagogical_flow=4,
-        level_consistency=3,
-        recast_naturalness=5,
-        learner_production_space=3,
-        coherence=4,
-        rationale={
-            "pedagogical_flow": "ok",
-            "level_consistency": "ok",
-            "recast_naturalness": "ok",
-            "learner_production_space": "ok",
-            "coherence": "ok",
-        },
-        stop_reason="budget_reached",
+    v = SessionVerdict.model_validate(
+        {
+            "pedagogical_flow": 4,
+            "level_consistency": 3,
+            "recast_naturalness": 5,
+            "learner_production_space": 3,
+            "coherence": 4,
+            "rationale": {
+                "pedagogical_flow": "ok",
+                "level_consistency": "ok",
+                "recast_naturalness": "ok",
+                "learner_production_space": "ok",
+                "coherence": "ok",
+            },
+            "stop_reason": "budget_reached",
+        }
     )
     assert v.overall == pytest.approx((4 + 3 + 5 + 3 + 4) / 5)
 
 
 def test_session_verdict_rejects_out_of_range() -> None:
     with pytest.raises(ValidationError):
-        SessionVerdict(
-            pedagogical_flow=6,
-            level_consistency=3,
-            recast_naturalness=3,
-            learner_production_space=3,
-            coherence=3,
-            rationale={},
-            stop_reason="budget_reached",
+        SessionVerdict.model_validate(
+            {
+                "pedagogical_flow": 6,
+                "level_consistency": 3,
+                "recast_naturalness": 3,
+                "learner_production_space": 3,
+                "coherence": 3,
+                "rationale": {},
+                "stop_reason": "budget_reached",
+            }
         )
 
 
 def test_session_verdict_rejects_unknown_stop_reason() -> None:
     with pytest.raises(ValidationError):
-        SessionVerdict(
-            pedagogical_flow=3,
-            level_consistency=3,
-            recast_naturalness=3,
-            learner_production_space=3,
-            coherence=3,
-            rationale={},
-            stop_reason="something_else",  # type: ignore[arg-type]
+        SessionVerdict.model_validate(
+            {
+                "pedagogical_flow": 3,
+                "level_consistency": 3,
+                "recast_naturalness": 3,
+                "learner_production_space": 3,
+                "coherence": 3,
+                "rationale": {},
+                "stop_reason": "something_else",
+            }
         )
 
 
 def test_overall_round_trips_through_dump() -> None:
-    v = SessionVerdict(
-        pedagogical_flow=4,
-        level_consistency=4,
-        recast_naturalness=4,
-        learner_production_space=4,
-        coherence=4,
-        rationale={
-            "pedagogical_flow": "ok",
-            "level_consistency": "ok",
-            "recast_naturalness": "ok",
-            "learner_production_space": "ok",
-            "coherence": "ok",
-        },
-        stop_reason="budget_reached",
+    v = SessionVerdict.model_validate(
+        {
+            "pedagogical_flow": 4,
+            "level_consistency": 4,
+            "recast_naturalness": 4,
+            "learner_production_space": 4,
+            "coherence": 4,
+            "rationale": {
+                "pedagogical_flow": "ok",
+                "level_consistency": "ok",
+                "recast_naturalness": "ok",
+                "learner_production_space": "ok",
+                "coherence": "ok",
+            },
+            "stop_reason": "budget_reached",
+        }
     )
     dumped = v.model_dump()
     assert dumped["overall"] == 4.0
@@ -153,20 +161,22 @@ async def test_judge_session_cache_hit_skips_api_call(tmp_path: Path) -> None:
     transcript = _transcript()
     cache.put(
         _judge_cache_key(persona.id, transcript),
-        SessionVerdict(
-            pedagogical_flow=5,
-            level_consistency=4,
-            recast_naturalness=4,
-            learner_production_space=3,
-            coherence=4,
-            rationale={
-                "pedagogical_flow": "cached",
-                "level_consistency": "cached",
-                "recast_naturalness": "cached",
-                "learner_production_space": "cached",
-                "coherence": "cached",
-            },
-            stop_reason="budget_reached",
+        SessionVerdict.model_validate(
+            {
+                "pedagogical_flow": 5,
+                "level_consistency": 4,
+                "recast_naturalness": 4,
+                "learner_production_space": 3,
+                "coherence": 4,
+                "rationale": {
+                    "pedagogical_flow": "cached",
+                    "level_consistency": "cached",
+                    "recast_naturalness": "cached",
+                    "learner_production_space": "cached",
+                    "coherence": "cached",
+                },
+                "stop_reason": "budget_reached",
+            }
         ).model_dump(),
     )
 
