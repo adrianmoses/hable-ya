@@ -43,9 +43,9 @@
 | 031 | Learner vocabulary tracking | in-progress | [029-learner-model](029-learner-model/spec.md) |
 | 032 | Theme selection (`THEMES_BY_LEVEL` + `get_session_theme()`) | in-progress | [029-learner-model](029-learner-model/spec.md) |
 | 033 | Knowledge-graph learner model in Apache AGE (node/edge schema for skills, concepts, errors, progression) | in-progress | [029-learner-model](029-learner-model/spec.md) |
-| 034 | Agent eval: synthetic learner simulator with error patterns | planned | — |
-| 035 | Agent eval: Opus session-outcome judge (pedagogical flow, level consistency, recast naturalness, learner production space, coherence) | planned | — |
-| 036 | Agent eval orchestrator (end-to-end session runs) | planned | — |
+| 034 | Agent eval: synthetic learner simulator with error patterns | in-progress | [034-agent-eval](034-agent-eval/spec.md) |
+| 035 | Agent eval: Opus session-outcome judge (pedagogical flow, level consistency, recast naturalness, learner production space, coherence) | in-progress | [034-agent-eval](034-agent-eval/spec.md) |
+| 036 | Agent eval orchestrator (end-to-end session runs) | in-progress | [034-agent-eval](034-agent-eval/spec.md) |
 | 037 | Interactive review TUI (fixtures + SFT datasets) | planned | — |
 | 038 | Latency benchmark script | planned | — |
 | 039 | Concurrency benchmark script (referenced in README, file absent) | planned | — |
@@ -88,3 +88,4 @@
 | 2026-04-21 | Spec 028-postgres-age-setup implemented; #028 + #041 → implemented. Divergences from spec (captured in the decision record): host port remapped `5432 → 5433` (system-Postgres collision), PG18 volume at `/var/lib/postgresql` (not `/data`), `ALTER ROLE` in migration so `search_path` survives asyncpg's `RESET ALL`, pytest-asyncio session loop scope set globally, `::name` cast required for `drop_graph`. `Settings.async_database_url` property centralises the `postgresql+asyncpg://` rewrite. |
 | 2026-04-22 | Learner-model bundle (#029–#033) scoped on branch `spec-learner-model-029-033`. Added #049 (auto-updating level) and #050 (initial-level placement) as deferred follow-ups — the 029–033 spec will keep level static/manual and hand-author scenario content inline. |
 | 2026-04-22 | Spec 029-learner-model drafted (bundles #029 + #030 + #031 + #032 + #033: hybrid relational + AGE graph storage, `log_turn` ingestion path, profile-driven prompt rendering, 50 hand-authored per-band scenarios with 3-session cooldown). Static band (no auto-promotion), one `:Learner` node, AGE graph writes in same transaction as aggregate updates; #029–#033 → in-progress. |
+| 2026-04-24 | Spec 034-agent-eval drafted on branch `spec-agent-eval` (bundles #034 + #035 + #036: Opus-driven synthetic learner with disk-cached utterances, 5-dimension Opus session judge with disk-cached verdicts, orchestrator emitting results parallel to `eval/run_eval.py`). In-memory profile accumulator shares `compute_snapshot` with `LearnerProfileRepo` via a new `hable_ya/learner/aggregations.py`; talks to llama.cpp directly (no Pipecat/WS); #034–#036 → in-progress. |
