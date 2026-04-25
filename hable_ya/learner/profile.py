@@ -3,36 +3,62 @@
 The snapshot is the handoff object the prompt builder consumes. It combines
 the static `learner_profile` row with two rolling-window aggregates derived
 from the last K=20 turns (`L1_reliance`, `speech_fluency`) and the top-N
-reads from `error_counts` / `vocabulary_items`. The actual mapping from
-snapshot → :class:`eval.fixtures.schema.LearnerProfile` happens in the
-prompt builder at render time; this module only owns persistence.
+reads from `error_counts` / `vocabulary_items`. Aggregation rules live in
+:mod:`hable_ya.learner.aggregations` so the agent-eval accumulator can share
+them; this module owns persistence and adapts SQL rows into the pure
+function's input shape.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from collections import Counter
 
 import asyncpg
 
-from eval.fixtures.schema import CEFRBand
+from eval.fixtures.schema import CEFRBand, FluencySignal, LearnerProfile
+from hable_ya.learner.aggregations import (
+    LearnerProfileSnapshot,
+    compute_snapshot,
+)
+
+__all__ = [
+    "LearnerProfileRepo",
+    "LearnerProfileSnapshot",
+    "snapshot_to_profile",
+]
 
 logger = logging.getLogger(__name__)
 
-_FLUENCY_TO_FLOAT = {"weak": 0.3, "moderate": 0.6, "strong": 0.9}
+# Production-level midpoints per band so the rendered prompt's L1 reliance
+# and speech fluency values aren't wildly off even though we don't track
+# them live. Informational only — the band override is authoritative.
+_BAND_MIDPOINT: dict[CEFRBand, float] = {
+    "A1": 0.1,
+    "A2": 0.3,
+    "B1": 0.5,
+    "B2": 0.7,
+    "C1": 0.9,
+}
 
 
-@dataclass(slots=True, frozen=True)
-class LearnerProfileSnapshot:
-    band: CEFRBand
-    sessions_completed: int
-    # Rolling-mean over the last N turns. Neutral default (0.5) when there is
-    # no history, so cold-start renders identically to the pre-029 neutral
-    # profile.
-    l1_reliance: float = 0.5
-    speech_fluency: float = 0.5
-    error_patterns: list[str] = field(default_factory=list)
-    vocab_strengths: list[str] = field(default_factory=list)
+def snapshot_to_profile(snapshot: LearnerProfileSnapshot) -> LearnerProfile:
+    """Map a `LearnerProfileSnapshot` into the prompt-renderer's profile shape.
+
+    The runtime prompt builder and the agent-eval orchestrator both call
+    this so the rendered system prompt is identical whether the snapshot
+    came from the DB or an in-memory accumulator.
+    """
+    level = _BAND_MIDPOINT.get(snapshot.band, 0.5)
+    return LearnerProfile(
+        production_level=level,
+        L1_reliance=snapshot.l1_reliance,
+        speech_fluency=snapshot.speech_fluency,
+        is_calibrated=snapshot.sessions_completed > 0,
+        sessions_completed=snapshot.sessions_completed,
+        vocab_strengths=list(snapshot.vocab_strengths),
+        error_patterns=list(snapshot.error_patterns),
+    )
 
 
 class LearnerProfileRepo:
@@ -59,56 +85,47 @@ class LearnerProfileRepo:
             band: CEFRBand = profile_row["band"]
             sessions_completed = int(profile_row["sessions_completed"])
 
-            agg_row = await conn.fetchrow(
+            turn_rows = await conn.fetch(
                 """
-                SELECT
-                    AVG(CASE WHEN L1_used THEN 1.0 ELSE 0.0 END) AS l1_mean,
-                    AVG(
-                        CASE fluency_signal
-                            WHEN 'weak'     THEN $2::float8
-                            WHEN 'moderate' THEN $3::float8
-                            WHEN 'strong'   THEN $4::float8
-                        END
-                    ) AS fluency_mean
-                FROM (
-                    SELECT L1_used, fluency_signal
-                    FROM turns
-                    ORDER BY timestamp DESC
-                    LIMIT $1
-                ) recent
-                """,
-                window_turns,
-                _FLUENCY_TO_FLOAT["weak"],
-                _FLUENCY_TO_FLOAT["moderate"],
-                _FLUENCY_TO_FLOAT["strong"],
-            )
-            l1_mean = agg_row["l1_mean"] if agg_row is not None else None
-            fluency_mean = agg_row["fluency_mean"] if agg_row is not None else None
-
-            error_rows = await conn.fetch(
-                """
-                SELECT category FROM error_counts
-                ORDER BY count DESC, last_seen_at DESC
+                SELECT L1_used, fluency_signal
+                FROM turns
+                ORDER BY timestamp DESC
                 LIMIT $1
                 """,
-                top_errors,
+                window_turns,
+            )
+            error_rows = await conn.fetch(
+                "SELECT category, count, last_seen_at FROM error_counts"
             )
             vocab_rows = await conn.fetch(
                 """
-                SELECT lemma FROM vocabulary_items
+                SELECT lemma, last_seen_at FROM vocabulary_items
                 ORDER BY last_seen_at DESC
                 LIMIT $1
                 """,
                 top_vocab,
             )
 
-        return LearnerProfileSnapshot(
+        l1_used_flags = [bool(r["l1_used"]) for r in turn_rows]
+        fluency_signals: list[FluencySignal] = [
+            r["fluency_signal"] for r in turn_rows
+        ]
+        error_counter: Counter[str] = Counter(
+            {r["category"]: int(r["count"]) for r in error_rows}
+        )
+        error_last_seen = {r["category"]: r["last_seen_at"] for r in error_rows}
+        vocab_last_seen = {r["lemma"]: r["last_seen_at"] for r in vocab_rows}
+
+        return compute_snapshot(
             band=band,
             sessions_completed=sessions_completed,
-            l1_reliance=float(l1_mean) if l1_mean is not None else 0.5,
-            speech_fluency=float(fluency_mean) if fluency_mean is not None else 0.5,
-            error_patterns=[r["category"] for r in error_rows],
-            vocab_strengths=[r["lemma"] for r in vocab_rows],
+            l1_used_flags=l1_used_flags,
+            fluency_signals=fluency_signals,
+            error_counter=error_counter,
+            error_last_seen=error_last_seen,
+            vocab_last_seen=vocab_last_seen,
+            top_errors=top_errors,
+            top_vocab=top_vocab,
         )
 
     async def increment_session_count(self) -> None:

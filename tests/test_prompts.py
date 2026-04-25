@@ -7,12 +7,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from eval.fixtures.schema import CEFRBand, LearnerProfile, SystemParams, Theme
-from hable_ya.learner.profile import LearnerProfileSnapshot
+from hable_ya.learner.profile import _BAND_MIDPOINT, LearnerProfileSnapshot
 from hable_ya.learner.themes import NEUTRAL_THEME as _NEUTRAL_THEME
-from hable_ya.pipeline.prompts.builder import (
-    _BAND_MIDPOINT,
-    build_system_prompt,
-)
+from hable_ya.pipeline.prompts.builder import build_system_prompt
 from hable_ya.pipeline.prompts.register import (
     COLD_START_INSTRUCTIONS,
     REGISTER_BY_LEVEL,
