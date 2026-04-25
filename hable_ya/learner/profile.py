@@ -16,15 +16,49 @@ from collections import Counter
 
 import asyncpg
 
-from eval.fixtures.schema import CEFRBand, FluencySignal
+from eval.fixtures.schema import CEFRBand, FluencySignal, LearnerProfile
 from hable_ya.learner.aggregations import (
     LearnerProfileSnapshot,
     compute_snapshot,
 )
 
-__all__ = ["LearnerProfileRepo", "LearnerProfileSnapshot"]
+__all__ = [
+    "LearnerProfileRepo",
+    "LearnerProfileSnapshot",
+    "snapshot_to_profile",
+]
 
 logger = logging.getLogger(__name__)
+
+# Production-level midpoints per band so the rendered prompt's L1 reliance
+# and speech fluency values aren't wildly off even though we don't track
+# them live. Informational only — the band override is authoritative.
+_BAND_MIDPOINT: dict[CEFRBand, float] = {
+    "A1": 0.1,
+    "A2": 0.3,
+    "B1": 0.5,
+    "B2": 0.7,
+    "C1": 0.9,
+}
+
+
+def snapshot_to_profile(snapshot: LearnerProfileSnapshot) -> LearnerProfile:
+    """Map a `LearnerProfileSnapshot` into the prompt-renderer's profile shape.
+
+    The runtime prompt builder and the agent-eval orchestrator both call
+    this so the rendered system prompt is identical whether the snapshot
+    came from the DB or an in-memory accumulator.
+    """
+    level = _BAND_MIDPOINT.get(snapshot.band, 0.5)
+    return LearnerProfile(
+        production_level=level,
+        L1_reliance=snapshot.l1_reliance,
+        speech_fluency=snapshot.speech_fluency,
+        is_calibrated=snapshot.sessions_completed > 0,
+        sessions_completed=snapshot.sessions_completed,
+        vocab_strengths=list(snapshot.vocab_strengths),
+        error_patterns=list(snapshot.error_patterns),
+    )
 
 
 class LearnerProfileRepo:

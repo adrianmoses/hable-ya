@@ -22,22 +22,15 @@ import asyncpg
 
 from eval.fixtures.schema import CEFRBand, LearnerProfile, SystemParams, Theme
 from hable_ya.config import settings
-from hable_ya.learner.profile import LearnerProfileRepo, LearnerProfileSnapshot
+from hable_ya.learner.profile import (
+    LearnerProfileRepo,
+    LearnerProfileSnapshot,
+    snapshot_to_profile,
+)
 from hable_ya.learner.themes import NEUTRAL_THEME as _NEUTRAL_THEME
 from hable_ya.learner.themes import get_session_theme
 from hable_ya.pipeline.prompts.register import COLD_START_INSTRUCTIONS
 from hable_ya.pipeline.prompts.render import render_system_prompt
-
-# Production-level midpoints per band so the rendered prompt's "L1 reliance"
-# and "speech fluency" values aren't wildly off even though we don't track
-# them live. Informational only — the band override is authoritative.
-_BAND_MIDPOINT: dict[str, float] = {
-    "A1": 0.1,
-    "A2": 0.3,
-    "B1": 0.5,
-    "B2": 0.7,
-    "C1": 0.9,
-}
 
 
 @dataclass(slots=True, frozen=True)
@@ -48,28 +41,8 @@ class SessionPrompt:
 
 
 def _neutral_profile(band: CEFRBand) -> LearnerProfile:
-    level = _BAND_MIDPOINT.get(band, 0.5)
-    return LearnerProfile(
-        production_level=level,
-        L1_reliance=0.5,
-        speech_fluency=0.5,
-        is_calibrated=False,
-        sessions_completed=0,
-        vocab_strengths=[],
-        error_patterns=[],
-    )
-
-
-def _profile_from_snapshot(snapshot: LearnerProfileSnapshot) -> LearnerProfile:
-    level = _BAND_MIDPOINT.get(snapshot.band, 0.5)
-    return LearnerProfile(
-        production_level=level,
-        L1_reliance=snapshot.l1_reliance,
-        speech_fluency=snapshot.speech_fluency,
-        is_calibrated=snapshot.sessions_completed > 0,
-        sessions_completed=snapshot.sessions_completed,
-        vocab_strengths=list(snapshot.vocab_strengths),
-        error_patterns=list(snapshot.error_patterns),
+    return snapshot_to_profile(
+        LearnerProfileSnapshot(band=band, sessions_completed=0)
     )
 
 
@@ -93,7 +66,7 @@ async def build_session_prompt(
             top_vocab=settings.profile_top_vocab,
         )
         band = snapshot.band
-        profile = _profile_from_snapshot(snapshot)
+        profile = snapshot_to_profile(snapshot)
         first_session = snapshot.sessions_completed == 0
         # First session with a real pool = cold start regardless of the flag.
         opt_in_cold_start = opt_in_cold_start or first_session
