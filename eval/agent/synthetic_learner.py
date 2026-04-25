@@ -16,14 +16,17 @@ sent to Anthropic.
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Final, Literal
 
 import anthropic
 from anthropic.types import MessageParam
 from pydantic import BaseModel
 
-from eval.agent._cache import JsonDiskCache
+from eval.agent._cache import (
+    JsonDiskCache,
+    cached_system_block,
+    canonical_transcript,
+)
 from eval.agent.personas.schema import Persona
 from eval.fixtures.schema import ConversationTurn
 
@@ -62,17 +65,10 @@ def _build_learner_system(persona: Persona) -> str:
     )
 
 
-def _canonical_transcript(transcript: list[ConversationTurn]) -> str:
-    return json.dumps(
-        [{"role": t.role, "content": t.content} for t in transcript],
-        ensure_ascii=False,
-    )
-
-
 def _cache_key(persona_id: str, transcript: list[ConversationTurn]) -> str:
     raw = (
         f"{LEARNER_SYSTEM_VERSION}|{persona_id}|"
-        f"{_canonical_transcript(transcript)}"
+        f"{canonical_transcript(transcript)}"
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -142,13 +138,7 @@ class SyntheticLearner:
             model=self._model,
             max_tokens=256,
             temperature=1.0,
-            system=[
-                {
-                    "type": "text",
-                    "text": system,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
+            system=[cached_system_block(system)],
             messages=messages,
         )
         utterance = "".join(

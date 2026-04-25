@@ -68,6 +68,22 @@ DEFAULT_TIMEOUT_S = 120.0
 DEFAULT_MAX_TOKENS = 1024
 LLAMA_MODEL_ID = "gemma-4-e4b"
 
+# Per spec OQ#6 cost table: short Opus learner turn (~$15/Mtok in,
+# $75/Mtok out) averages ~$0.018; one judge call (full transcript +
+# rubric) averages ~$0.06. Used by `_cost_preview` only.
+COST_PER_LEARNER_TURN_USD = 0.018
+COST_PER_JUDGE_CALL_USD = 0.06
+
+# Single source of truth for the 5 session-level dimension names. Shared
+# with `eval.agent.compare` so the two grouping orders cannot drift.
+DIMENSION_KEYS: tuple[str, ...] = (
+    "pedagogical_flow",
+    "level_consistency",
+    "recast_naturalness",
+    "learner_production_space",
+    "coherence",
+)
+
 _VALID_FLUENCY: set[FluencySignal] = {"weak", "moderate", "strong"}
 
 
@@ -153,7 +169,7 @@ def _build_turn_record(
     )
 
     error_categories: list[str] = []
-    for err in args.get("errors", []) or []:
+    for err in args.get("errors", []):
         if isinstance(err, dict) and "type" in err:
             error_categories.append(str(err["type"]))
 
@@ -244,13 +260,6 @@ def compute_agent_aggregates(
     if not sessions:
         return {}
 
-    dim_keys = (
-        "pedagogical_flow",
-        "level_consistency",
-        "recast_naturalness",
-        "learner_production_space",
-        "coherence",
-    )
     n = len(sessions)
 
     overall_scores = [s.verdict.overall for s in sessions]
@@ -260,7 +269,7 @@ def compute_agent_aggregates(
     }
 
     by_dimension: dict[str, dict[str, Any]] = {}
-    for dim in dim_keys:
+    for dim in DIMENSION_KEYS:
         scores = [getattr(s.verdict, dim) for s in sessions]
         by_dimension[dim] = {
             "mean": round(sum(scores) / n, 4),
@@ -319,19 +328,11 @@ def _cost_preview(
     personas: list[Persona],
     learner_cache: JsonDiskCache,
 ) -> dict[str, Any]:
-    """Cost preview based on observable cache state.
+    """Worst-case cost estimate from observable cache state.
 
-    Only the first learner turn has a deterministic cache key (empty
-    transcript + persona.id); later turns and the judge depend on the
-    agent's actual responses. So this is necessarily a worst-case
-    estimate: every persona without an opening_utterance and without a
-    first-turn cache hit is assumed to cost ~$0.018/turn × turn_budget;
-    every persona is assumed to cost one fresh judge call (~$0.06).
-    Personas with a cached first-turn typically replay from cache for
-    most subsequent turns too, so observed cost will usually be lower.
-
-    Per spec OQ#6, first-run is ~$4 for 15 personas × 12 turns; this
-    estimate brackets that.
+    Only the first learner turn has a deterministic cache key, so
+    judge calls and downstream learner turns are always assumed
+    uncached. See spec OQ#6 — first-run ~$4 for 15×12 turns.
     """
     learner_uncached = 0
     for p in personas:
@@ -342,8 +343,8 @@ def _cost_preview(
             learner_uncached += 1
 
     avg_turns = sum(p.turn_budget for p in personas) / max(1, len(personas))
-    learner_cost = learner_uncached * avg_turns * 0.018
-    judge_cost = len(personas) * 0.06
+    learner_cost = learner_uncached * avg_turns * COST_PER_LEARNER_TURN_USD
+    judge_cost = len(personas) * COST_PER_JUDGE_CALL_USD
     total = learner_cost + judge_cost
 
     return {
@@ -549,7 +550,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model-label",
-        default="gemma-4-e4b",
+        default=LLAMA_MODEL_ID,
         help="Label stored in each session record + aggregate report.",
     )
     parser.add_argument(

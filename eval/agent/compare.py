@@ -20,6 +20,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from eval.agent.run_agent_eval import DIMENSION_KEYS
 from eval.agent.types import AgentEvalOutput
 
 console = Console()
@@ -35,14 +36,6 @@ THRESHOLDS: dict[str, tuple[float, str, str]] = {
     "coherence": (3.5, "below", "investigate"),
     "overall": (3.5, "below", "investigate"),
 }
-
-_DIMENSIONS = (
-    "pedagogical_flow",
-    "level_consistency",
-    "recast_naturalness",
-    "learner_production_space",
-    "coherence",
-)
 
 
 def _load(path: str) -> AgentEvalOutput:
@@ -96,7 +89,7 @@ def compare(a: AgentEvalOutput, b: AgentEvalOutput) -> None:
 
     dim_a = agg_a.get("by_dimension", {})
     dim_b = agg_b.get("by_dimension", {})
-    for dim in _DIMENSIONS:
+    for dim in DIMENSION_KEYS:
         ma = dim_a.get(dim, {}).get("mean", 0.0)
         mb = dim_b.get(dim, {}).get("mean", 0.0)
         dim_table.add_row(

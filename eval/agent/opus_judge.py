@@ -16,13 +16,16 @@ because `overall` is a Pydantic computed_field.
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Final, Literal
 
 import anthropic
 from pydantic import BaseModel, Field, computed_field
 
-from eval.agent._cache import JsonDiskCache
+from eval.agent._cache import (
+    JsonDiskCache,
+    cached_system_block,
+    canonical_transcript,
+)
 from eval.agent.personas.schema import Persona
 from eval.fixtures.schema import ConversationTurn
 
@@ -121,16 +124,9 @@ class SessionVerdict(BaseModel):
         return round(sum(dims) / len(dims), 2)
 
 
-def _canonical_transcript(transcript: list[ConversationTurn]) -> str:
-    return json.dumps(
-        [{"role": t.role, "content": t.content} for t in transcript],
-        ensure_ascii=False,
-    )
-
-
 def _judge_cache_key(persona_id: str, transcript: list[ConversationTurn]) -> str:
     raw = (
-        f"{JUDGE_SYSTEM_VERSION}|{persona_id}|{_canonical_transcript(transcript)}"
+        f"{JUDGE_SYSTEM_VERSION}|{persona_id}|{canonical_transcript(transcript)}"
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -175,13 +171,7 @@ async def judge_session(
     response = await client.messages.parse(
         model=model,
         max_tokens=2048,
-        system=[
-            {
-                "type": "text",
-                "text": JUDGE_SYSTEM,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+        system=[cached_system_block(JUDGE_SYSTEM)],
         messages=[{"role": "user", "content": user_prompt}],
         output_format=SessionVerdict,
     )

@@ -4,6 +4,11 @@ Each entry is one file under `cache_dir/{key}.json`. Callers compute their
 own keys (`sha256(...)` over canonical inputs + a version string) so the
 cache module stays domain-agnostic. The format is human-readable on
 purpose — diffing a cache miss is part of debugging persona regressions.
+
+Also exposes two helpers shared by the learner and judge: a transcript
+canonicalizer used inside cache-key formation, and the Anthropic
+system-block dict that turns prompt-caching on for the judge/learner
+system prompt.
 """
 
 from __future__ import annotations
@@ -11,6 +16,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from anthropic.types import TextBlockParam
+
+from eval.fixtures.schema import ConversationTurn
+
+
+def canonical_transcript(transcript: list[ConversationTurn]) -> str:
+    """Stable JSON encoding of a transcript for cache-key hashing."""
+    return json.dumps(
+        [{"role": t.role, "content": t.content} for t in transcript],
+        ensure_ascii=False,
+    )
+
+
+def cached_system_block(text: str) -> TextBlockParam:
+    """Anthropic system-message block with ephemeral prompt caching turned on."""
+    return {
+        "type": "text",
+        "text": text,
+        "cache_control": {"type": "ephemeral"},
+    }
 
 
 class JsonDiskCache:
