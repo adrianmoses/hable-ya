@@ -115,12 +115,22 @@ class HableYaToolHandler(FrameProcessor):
                     )
                     continue
 
+                cefr_band = normalized.get("cefr_band")
+                if cefr_band is None:
+                    self._sink.band_missing += 1
+                    logger.warning(
+                        "session %s: log_turn omitted or invalid cefr_band: "
+                        "raw=%r",
+                        self._session_id,
+                        raw_args.get("cefr_band"),
+                    )
                 obs = TurnObservation.now(
                     session_id=self._session_id,
                     learner_utterance=normalized["learner_utterance"],
                     errors=normalized["errors"],
                     fluency_signal=normalized["fluency_signal"],
                     L1_used=normalized["L1_used"],
+                    cefr_band=cefr_band,
                 )
                 await self._sink.append(obs)
                 if self._ingest is not None:

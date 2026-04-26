@@ -25,6 +25,7 @@ from hable_ya.config import settings
 from hable_ya.learner.profile import (
     LearnerProfileRepo,
     LearnerProfileSnapshot,
+    is_calibrated_async,
     snapshot_to_profile,
 )
 from hable_ya.learner.themes import NEUTRAL_THEME as _NEUTRAL_THEME
@@ -42,8 +43,22 @@ class SessionPrompt:
 
 def _neutral_profile(band: CEFRBand) -> LearnerProfile:
     return snapshot_to_profile(
-        LearnerProfileSnapshot(band=band, sessions_completed=0)
+        LearnerProfileSnapshot(band=band, sessions_completed=0),
+        is_calibrated=False,
     )
+
+
+def render_cold_start_prompt(band: CEFRBand) -> str:
+    """Render the same system prompt the runtime emits on a fresh DB.
+
+    Synchronous and DB-free so the replay script and tests can use it
+    without a pool. Mirrors the uncalibrated branch of
+    :func:`build_session_prompt`: neutral profile, neutral theme, the
+    appended ``COLD_START_INSTRUCTIONS`` block.
+    """
+    params = SystemParams(profile=_neutral_profile(band), theme=_NEUTRAL_THEME)
+    rendered = render_system_prompt(params, band=band)
+    return f"{rendered}\n\n## Primera sesión\n{COLD_START_INSTRUCTIONS}"
 
 
 async def build_session_prompt(
@@ -66,13 +81,16 @@ async def build_session_prompt(
             top_vocab=settings.profile_top_vocab,
         )
         band = snapshot.band
-        profile = snapshot_to_profile(snapshot)
-        first_session = snapshot.sessions_completed == 0
-        # First session with a real pool = cold start regardless of the flag.
-        opt_in_cold_start = opt_in_cold_start or first_session
+        # Spec 049: is_calibrated derives from "a placement row exists",
+        # not from sessions_completed > 0. A session that wrote no
+        # ``log_turn`` calls (pathological but possible) must not flip
+        # the cold-start gate.
+        calibrated = await is_calibrated_async(pool)
+        profile = snapshot_to_profile(snapshot, is_calibrated=calibrated)
+        opt_in_cold_start = opt_in_cold_start or not calibrated
         theme = (
             _NEUTRAL_THEME
-            if first_session
+            if not calibrated
             else get_session_theme(
                 level=band,
                 recent_domains=recent_domains or [],
@@ -85,6 +103,14 @@ async def build_session_prompt(
     if opt_in_cold_start:
         rendered = f"{rendered}\n\n## Primera sesión\n{COLD_START_INSTRUCTIONS}"
     return SessionPrompt(text=rendered, theme=theme, band=band)
+
+
+__all__ = [
+    "SessionPrompt",
+    "build_session_prompt",
+    "build_system_prompt",
+    "render_cold_start_prompt",
+]
 
 
 async def build_system_prompt(

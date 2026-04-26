@@ -12,13 +12,17 @@ from __future__ import annotations
 from typing import Any
 
 from eval.fixtures.schema import CEFRBand, Fixture, SystemParams
+from hable_ya.learner.bands import ALL_BANDS, bucket_band, is_valid_cefr_band
 
 # Canonical log_turn argument keys (training target + runtime handler schema).
+# `cefr_band` is added by spec 049 — purely prompt-engineered on the existing
+# fine-tuned Gemma; not in the SFT dataset, so emission is best-effort.
 CANONICAL_KEYS: tuple[str, ...] = (
     "learner_utterance",
     "errors",
     "fluency_signal",
     "L1_used",
+    "cefr_band",
 )
 CANONICAL_ERROR_KEYS: tuple[str, ...] = ("type", "produced", "target")
 
@@ -94,17 +98,98 @@ FORBIDDEN_CORRECTION_PHRASES: tuple[str, ...] = (
 
 VALID_FLUENCY_SIGNALS: tuple[str, ...] = ("weak", "moderate", "strong")
 
+# Source of truth for the CEFR band rubric. Rendered into both
+# (a) the LOG_TURN_TOOL parameter description (one-line gloss per band) and
+# (b) the system prompt body (a fuller paragraph per band).
+# Keeping a single constant prevents drift between the tool schema the model
+# sees on parameter resolution and the rubric it sees in system context.
+BAND_RUBRIC_GLOSS: dict[str, str] = {
+    "A1": (
+        "memorized phrases, isolated words, frequent silences; basic "
+        "present tense only"
+    ),
+    "A2": (
+        "simple sentences on familiar topics; some past forms; common "
+        "vocabulary; visible effort"
+    ),
+    "B1": (
+        "connected speech; can describe past and future; expresses "
+        "opinions with some hesitation"
+    ),
+    "B2": (
+        "detailed speech; can argue a viewpoint; subjunctive used; "
+        "few grammatical lapses"
+    ),
+    "C1": (
+        "spontaneous and fluent; idiomatic; complex grammar including "
+        "hypotheticals; few errors"
+    ),
+}
+
+BAND_RUBRIC_PARAGRAPH: dict[str, str] = {
+    "A1": (
+        "A1 — Memorized words and short formulaic phrases. Sentences "
+        "rarely exceed 5–6 words. Only the present tense, and even there "
+        "verbs may be conjugated incorrectly or left as infinitives. "
+        "Heavy reliance on filler pauses; often answers a question with "
+        "a single word or a noun phrase rather than a clause."
+    ),
+    "A2": (
+        "A2 — Short, simple sentences about everyday topics (family, "
+        "routine, immediate plans). Present tense is reliable; the "
+        "preterite is attempted but often regularized incorrectly. "
+        "Vocabulary is high-frequency. Discourse markers are minimal: "
+        "sentences tend to be juxtaposed without connectors."
+    ),
+    "B1": (
+        "B1 — Connected speech across a few sentences. Can narrate a "
+        "past event and describe a future plan, with occasional tense "
+        "confusion (preterite vs. imperfect). Uses basic connectors "
+        "(porque, entonces, pero). Vocabulary is sufficient for daily "
+        "life; abstract or evaluative language is still labored."
+    ),
+    "B2": (
+        "B2 — Sustained, detailed speech on familiar and some unfamiliar "
+        "topics. Argues a viewpoint with reasons. Uses the subjunctive "
+        "in common contexts (creo que…, espero que…). Errors no longer "
+        "obscure meaning. Rich connectors (sin embargo, aunque, "
+        "mientras que); register can flex between casual and neutral."
+    ),
+    "C1": (
+        "C1 — Spontaneous and fluent. Complex grammar including "
+        "hypotheticals (si tuviera…, habría hecho…), passive and "
+        "impersonal forms, varied subjunctive uses. Idiomatic phrasing. "
+        "Errors are rare and do not impede comprehension. Discourse is "
+        "cohesive, with self-correction and nuance."
+    ),
+}
+
+
+def render_band_rubric_section() -> list[str]:
+    """The ## Assessing the learner's level section, rendered as lines.
+
+    Used by render_system_prompt; co-located so test byte-identity checks
+    can import the same source.
+    """
+    lines: list[str] = [
+        "## Assessing the learner's level",
+        "On every turn, classify the learner's last utterance into a CEFR "
+        "band (A1, A2, B1, B2, or C1) using the rubric below, and emit "
+        "your read in the `cefr_band` field of `log_turn`. Base the read "
+        "on the learner's production characteristics (sentence "
+        "complexity, tense usage, vocabulary range, discourse), not on "
+        "the topic of the conversation.",
+        "",
+    ]
+    for band in ALL_BANDS:
+        lines.append(BAND_RUBRIC_PARAGRAPH[band])
+        lines.append("")
+    return lines
+
 
 def band_from_production_level(level: float) -> CEFRBand:
-    if level < 0.2:
-        return "A1"
-    if level < 0.4:
-        return "A2"
-    if level < 0.6:
-        return "B1"
-    if level < 0.8:
-        return "B2"
-    return "C1"
+    """Backwards-compatible wrapper around the shared bucketing rule."""
+    return bucket_band(level)
 
 
 def render_system_prompt(
@@ -156,6 +241,11 @@ def render_system_prompt(
             '"sorry", "yes", "no", "I", "ok".',
             f"- {band} register: {REGISTER_GUIDANCE[band]}",
             "",
+        ]
+    )
+    lines.extend(render_band_rubric_section())
+    lines.extend(
+        [
             "## Handling learner errors: recast, never correct",
             "If the learner's last turn contains an error, include the CORRECT "
             "form naturally in your reply — as if paraphrasing what they meant. "
@@ -188,7 +278,7 @@ def render_system_prompt(
             "this EXACT format — no code fences, no other wrappers:",
             "",
             'log_turn({"learner_utterance": "...", "errors": [...], '
-            '"fluency_signal": "...", "L1_used": ...})',
+            '"fluency_signal": "...", "L1_used": ..., "cefr_band": "..."})',
             "",
             "Use that exact function-call shape: the literal name `log_turn`, "
             "an opening paren, a single JSON object, a closing paren. Do not "
@@ -207,6 +297,9 @@ def render_system_prompt(
             "extended → strong).",
             "- L1_used: true if the learner's last message contained any "
             "English word, otherwise false.",
+            '- cefr_band: "A1", "A2", "B1", "B2", or "C1" — your read of the '
+            "learner's last utterance against the rubric above. Base on "
+            "production characteristics, not topic.",
             "",
             "### Full-turn example",
             f'Learner: "{learner_ex}"',
@@ -214,7 +307,8 @@ def render_system_prompt(
             assistant_ex,
             'log_turn({"learner_utterance": "'
             + learner_ex
-            + '", "errors": [], "fluency_signal": "moderate", "L1_used": false})',
+            + '", "errors": [], "fluency_signal": "moderate", '
+            f'"L1_used": false, "cefr_band": "{band}"}})',
         ]
     )
 
@@ -311,9 +405,13 @@ def normalize_runtime_log_turn_args(
 ) -> dict[str, Any] | None:
     """Normalize a runtime-emitted ``log_turn`` payload with no fixture context.
 
-    Returns the canonical 4-key dict, or ``None`` if ``raw_args`` is
-    fundamentally malformed (errors not a list, fluency_signal not in the
-    valid enum, L1_used not coercible to bool).
+    Returns the canonical 5-key dict, or ``None`` if ``raw_args`` is
+    fundamentally malformed in the four core fields (errors not a list,
+    fluency_signal not in the valid enum, L1_used not coercible to bool).
+
+    ``cefr_band`` is best-effort: missing or out-of-enum maps to ``None`` so
+    the rest of the observation still flows. The caller is expected to
+    surface a counter on the missing path (see ``HableYaToolHandler``).
     """
     utterance = raw_args.get("learner_utterance", "")
     if not isinstance(utterance, str) or not utterance.strip():
@@ -342,9 +440,13 @@ def normalize_runtime_log_turn_args(
     else:
         return None
 
+    band_raw = raw_args.get("cefr_band")
+    cefr_band = band_raw if is_valid_cefr_band(band_raw) else None
+
     return {
         "learner_utterance": utterance,
         "errors": errors,
         "fluency_signal": fluency,
         "L1_used": l1_used,
+        "cefr_band": cefr_band,
     }

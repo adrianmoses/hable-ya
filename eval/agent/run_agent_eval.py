@@ -49,12 +49,13 @@ from eval.agent.types import (
     SessionRecord,
     TurnRecord,
 )
-from eval.fixtures.schema import FluencySignal, SystemParams, Theme
+from eval.fixtures.schema import CEFRBand, FluencySignal, SystemParams, Theme
 from eval.run_eval import MINIMAL_SYSTEM_PROMPT
 from eval.scoring.recast import content_lemma_surfaces
 from eval.scoring.turn import parse_tool_calls, strip_tool_calls
 from finetune.format import render_system_prompt
 from hable_ya.learner.aggregations import LearnerProfileSnapshot
+from hable_ya.learner.bands import is_valid_cefr_band
 from hable_ya.learner.profile import snapshot_to_profile
 from hable_ya.learner.themes import THEMES_BY_LEVEL
 
@@ -174,11 +175,14 @@ def _build_turn_record(
             error_categories.append(str(err["type"]))
 
     lemmas = [pair[0] for pair in content_lemma_surfaces(learner_utterance)]
+    raw_band = args.get("cefr_band")
+    cefr_band: CEFRBand | None = raw_band if is_valid_cefr_band(raw_band) else None
     return TurnRecord(
         fluency_signal=fluency,
         L1_used=bool(args.get("L1_used", False)),
         error_categories=error_categories,
         vocab_lemmas=lemmas,
+        cefr_band=cefr_band,
     )
 
 

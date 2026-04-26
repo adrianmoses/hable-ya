@@ -28,6 +28,11 @@ class TurnObservation:
     errors: list[dict[str, str]]
     fluency_signal: str
     L1_used: bool
+    # Spec 049: best-effort model emission. None when the model omitted
+    # cefr_band or emitted an out-of-enum value; the runtime degrades
+    # gracefully and the placement/leveling policies treat None as "no
+    # signal from this turn" rather than erroring.
+    cefr_band: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -39,6 +44,7 @@ class TurnObservation:
         errors: list[dict[str, str]],
         fluency_signal: str,
         L1_used: bool,
+        cefr_band: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> TurnObservation:
         return cls(
@@ -48,6 +54,7 @@ class TurnObservation:
             errors=errors,
             fluency_signal=fluency_signal,
             L1_used=L1_used,
+            cefr_band=cefr_band,
             extra=extra or {},
         )
 
@@ -70,6 +77,14 @@ class TurnObservationSink:
         # counter surfaces in /dev/observations as a graceful-degradation
         # signal so the researcher notices drift between sink and DB.
         self.ingest_failed: int = 0
+        # Spec 049: incremented when the model omits cefr_band or emits an
+        # out-of-enum value. Visible to decide whether prompt engineering
+        # alone is sufficient or a fine-tune pass on the field is needed.
+        self.band_missing: int = 0
+        # Spec 049: incremented when end_session's placement/leveling write
+        # fails (e.g. DB unavailable mid-session). Same posture as
+        # ingest_failed — exception is logged, not raised.
+        self.leveling_failed: int = 0
 
     @property
     def path(self) -> Path:

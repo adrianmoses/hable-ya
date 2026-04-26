@@ -289,3 +289,77 @@ async def test_unclosed_tool_call_counts_as_missing(
     assert sink.missing == 1
     cleaned = "".join(_texts(emitted))
     assert "Texto." in cleaned
+
+
+# ----- spec 049: cefr_band handling -----------------------------------------
+
+
+async def test_valid_cefr_band_is_carried_on_observation(
+    sink: TurnObservationSink,
+) -> None:
+    handler = HableYaToolHandler(sink, session_id="sb1")
+    tool_call = (
+        'log_turn({"learner_utterance": "Hola.", "errors": [], '
+        '"fluency_signal": "moderate", "L1_used": false, '
+        '"cefr_band": "B1"})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame("Hola. "),
+        LLMTextFrame(tool_call),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+
+    recent = sink.recent()
+    assert len(recent) == 1
+    assert recent[0].cefr_band == "B1"
+    assert sink.band_missing == 0
+    assert sink.missing == 0
+
+
+async def test_missing_cefr_band_degrades_and_increments_band_missing(
+    sink: TurnObservationSink,
+) -> None:
+    handler = HableYaToolHandler(sink, session_id="sb2")
+    tool_call = (
+        'log_turn({"learner_utterance": "Hola.", "errors": [], '
+        '"fluency_signal": "moderate", "L1_used": false})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame(tool_call),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+
+    recent = sink.recent()
+    assert len(recent) == 1
+    assert recent[0].cefr_band is None
+    assert sink.band_missing == 1
+    # The other 4-field signals are still recorded; the observation flows
+    # through for the placement-abstain posture to evaluate at end of session.
+    assert sink.missing == 0
+
+
+async def test_out_of_enum_cefr_band_degrades_to_none(
+    sink: TurnObservationSink,
+) -> None:
+    handler = HableYaToolHandler(sink, session_id="sb3")
+    tool_call = (
+        'log_turn({"learner_utterance": "Hola.", "errors": [], '
+        '"fluency_signal": "moderate", "L1_used": false, '
+        '"cefr_band": "intermediate"})'
+    )
+    frames: list[Frame] = [
+        LLMFullResponseStartFrame(),
+        LLMTextFrame(tool_call),
+        LLMFullResponseEndFrame(),
+    ]
+    await _drive(handler, frames)
+
+    recent = sink.recent()
+    assert len(recent) == 1
+    assert recent[0].cefr_band is None
+    assert sink.band_missing == 1
+    assert sink.missing == 0
