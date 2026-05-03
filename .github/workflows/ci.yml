@@ -83,7 +83,11 @@ jobs:
             tests/test_agent_aggregates.py \
             tests/test_aggregations_shared.py \
             tests/test_learner_profile.py \
-            scripts/voice_client.py
+            tests/test_placement_policy.py \
+            tests/test_leveling_policy.py \
+            tests/test_band_history.py \
+            scripts/voice_client.py \
+            scripts/replay_placement.py
 
       - name: Mypy
         run: |
@@ -103,9 +107,26 @@ jobs:
             tests/test_agent_judge_prompts.py \
             tests/test_agent_aggregates.py \
             tests/test_aggregations_shared.py \
-            tests/test_learner_profile.py
+            tests/test_learner_profile.py \
+            tests/test_placement_policy.py \
+            tests/test_leveling_policy.py \
+            tests/test_band_history.py \
+            scripts/replay_placement.py
 
       - name: Pytest
         env:
           HABLE_YA_DATABASE_URL: postgresql://hable_ya:hable_ya@localhost:5432/hable_ya
         run: uv run pytest tests/ -v
+
+      # Spec 049: replay_placement.py against the cold_start fixtures is
+      # the regression bar for model band-emission quality. Advisory in
+      # this slice's landing PR; promote to blocking once prompt
+      # engineering clears accuracy ≥ 0.75 / MAE ≤ 0.20 (see open
+      # question 3 in the spec). Requires a live llama.cpp endpoint, so
+      # this step is gated on an opt-in env var.
+      - name: Replay placement (advisory)
+        if: env.HABLE_YA_RUN_REPLAY == '1'
+        continue-on-error: true
+        env:
+          HABLE_YA_LLAMA_CPP_URL: ${{ env.HABLE_YA_LLAMA_CPP_URL }}
+        run: uv run python -m scripts.replay_placement --verbose

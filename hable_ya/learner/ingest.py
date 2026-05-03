@@ -7,6 +7,10 @@ graph. Called from the tool handler on the happy path of every validated
 ``log_turn`` call; failures are logged + counted (on the sink's
 ``ingest_failed``) rather than propagated, so a DB outage never takes
 down the live session.
+
+Spec 049: ``end_session`` also runs the placement / leveling decision
+through :class:`LevelingService`. Failures there are logged but never
+re-raised — the session-end path stays best-effort.
 """
 
 from __future__ import annotations
@@ -19,9 +23,14 @@ import asyncpg
 from eval.fixtures.schema import CEFRBand
 from hable_ya.learner import graph
 from hable_ya.learner.errors import ErrorRepo
-from hable_ya.learner.profile import LearnerProfileRepo
+from hable_ya.learner.leveling import LevelingService
+from hable_ya.learner.profile import (
+    LearnerProfileRepo,
+    current_band,
+    is_calibrated_async,
+)
 from hable_ya.learner.vocabulary import VocabularyRepo
-from hable_ya.runtime.observations import TurnObservation
+from hable_ya.runtime.observations import TurnObservation, TurnObservationSink
 
 logger = logging.getLogger("hable_ya.learner.ingest")
 
@@ -33,9 +42,20 @@ def _parse_timestamp(ts_iso: str) -> datetime:
 
 
 class TurnIngestService:
-    def __init__(self, pool: asyncpg.Pool) -> None:
+    def __init__(
+        self,
+        pool: asyncpg.Pool,
+        *,
+        leveling: LevelingService | None = None,
+        sink: TurnObservationSink | None = None,
+    ) -> None:
         self._pool = pool
         self._profile = LearnerProfileRepo(pool)
+        self._leveling = leveling
+        # Optional so end_session can bump ``leveling_failed`` on a write
+        # failure; the integration tests use the ingest service without
+        # the sink and that's fine.
+        self._sink = sink
 
     async def ingest(self, obs: TurnObservation) -> None:
         at = _parse_timestamp(obs.timestamp_iso)
@@ -91,6 +111,23 @@ class TurnIngestService:
                 "UPDATE sessions SET ended_at = now() WHERE session_id = $1",
                 session_id,
             )
+            if self._leveling is None:
+                return
+            calibrated = await is_calibrated_async(conn)
+            band = await current_band(conn) if calibrated else None
+        # Leveling acquires its own connection (it manages its own
+        # transaction + reads); doing it inside the acquire above would
+        # double-up. A DB hiccup must not crash the WebSocket handler.
+        try:
+            if not calibrated:
+                await self._leveling.run_placement(session_id=session_id)
+            else:
+                assert band is not None
+                await self._leveling.run_leveling(current_band=band)
+        except Exception:
+            logger.exception("session %s: leveling failed", session_id)
+            if self._sink is not None:
+                self._sink.leveling_failed += 1
 
     @staticmethod
     async def _insert_turn(
@@ -114,8 +151,9 @@ class TurnIngestService:
             await conn.fetchval(
                 """
                 INSERT INTO turns
-                    (session_id, timestamp, learner_utterance, fluency_signal, L1_used)
-                VALUES ($1, $2, $3, $4, $5)
+                    (session_id, timestamp, learner_utterance,
+                     fluency_signal, L1_used, cefr_band)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id
                 """,
                 obs.session_id,
@@ -123,5 +161,6 @@ class TurnIngestService:
                 obs.learner_utterance,
                 obs.fluency_signal,
                 obs.L1_used,
+                obs.cefr_band,
             )
         )

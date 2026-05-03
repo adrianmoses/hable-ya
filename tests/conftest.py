@@ -123,10 +123,14 @@ async def clean_learner_state(db_pool: asyncpg.Pool) -> asyncpg.Pool:
     async with db_pool.acquire() as conn:
         await conn.execute(
             "TRUNCATE error_observations, error_counts, vocabulary_items, "
-            "turns, sessions RESTART IDENTITY CASCADE"
+            "turns, sessions, band_history RESTART IDENTITY CASCADE"
         )
         await conn.execute(
-            "UPDATE learner_profile SET sessions_completed = 0, band = 'A2' "
+            "UPDATE learner_profile "
+            "SET sessions_completed = 0, "
+            "    band = 'A2', "
+            "    stable_sessions_at_band = 0, "
+            "    last_band_change_at = NULL "
             "WHERE id = 1"
         )
         await conn.execute(

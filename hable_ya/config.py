@@ -47,5 +47,14 @@ class Settings(BaseSettings):
     profile_top_vocab: int = 5  # top-N vocab lemmas surfaced in prompt
     theme_cooldown: int = 3  # recent themes excluded from selection
 
+    # Leveling (spec 049) tunables.
+    leveling_window_sessions: int = 3  # last-N sessions of turns the rolling
+    # mean reads. Independent of profile_window_turns (which is per-turn);
+    # session-keyed so a single chatty session can't outweigh several quiet ones.
+    leveling_promote_consecutive: int = 3  # K-of-K promote-target sessions
+    leveling_demote_consecutive: int = 4  # K-of-K demote-target sessions
+    placement_min_valid_turns: int = 3  # below this, placement abstains and
+    # the learner re-enters the diagnostic on the next session.
+
 
 settings = Settings()

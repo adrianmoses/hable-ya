@@ -38,6 +38,11 @@ class TurnRecord(BaseModel):
     L1_used: bool
     error_categories: list[str] = Field(default_factory=list)
     vocab_lemmas: list[str] = Field(default_factory=list)
+    # Spec 049: model-emitted per-turn CEFR band. Distinct from
+    # ``SessionRecord.cefr_band`` (the persona's expected band). Carried
+    # through the agent-eval orchestrator as passthrough metadata so
+    # reports and replay_placement.py share the same shape.
+    cefr_band: CEFRBand | None = None
 
 
 class SessionRecord(BaseModel):

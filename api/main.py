@@ -30,6 +30,7 @@ from hable_ya.db import (  # noqa: E402
 )
 from hable_ya.learner import graph as learner_graph  # noqa: E402
 from hable_ya.learner.ingest import TurnIngestService  # noqa: E402
+from hable_ya.learner.leveling import LevelingService  # noqa: E402
 from hable_ya.pipeline.services import load_services, warmup_llm  # noqa: E402
 from hable_ya.runtime.observations import TurnObservationSink  # noqa: E402
 
@@ -54,7 +55,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await upgrade_to_head()
     app.state.db_pool = await open_pool()
     app.state.db = HableYaDB(app.state.db_pool)
-    app.state.ingest = TurnIngestService(app.state.db_pool)
+    app.state.leveling = LevelingService(app.state.db_pool)
+    app.state.ingest = TurnIngestService(
+        app.state.db_pool,
+        leveling=app.state.leveling,
+        sink=app.state.observation_sink,
+    )
 
     # Seed the single Learner node and one Scenario node per theme so the
     # first session's graph writes can MATCH them. Both calls are idempotent.

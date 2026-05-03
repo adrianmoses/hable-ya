@@ -21,44 +21,88 @@ from hable_ya.learner.aggregations import (
     LearnerProfileSnapshot,
     compute_snapshot,
 )
+from hable_ya.learner.bands import BAND_MIDPOINT, is_valid_cefr_band
 
 __all__ = [
     "LearnerProfileRepo",
     "LearnerProfileSnapshot",
+    "current_band",
+    "is_calibrated_async",
     "snapshot_to_profile",
 ]
 
 logger = logging.getLogger(__name__)
 
-# Production-level midpoints per band so the rendered prompt's L1 reliance
-# and speech fluency values aren't wildly off even though we don't track
-# them live. Informational only — the band override is authoritative.
-_BAND_MIDPOINT: dict[CEFRBand, float] = {
-    "A1": 0.1,
-    "A2": 0.3,
-    "B1": 0.5,
-    "B2": 0.7,
-    "C1": 0.9,
-}
+# Backwards-compatible alias for tests that imported the underscore name.
+_BAND_MIDPOINT = BAND_MIDPOINT
 
 
-def snapshot_to_profile(snapshot: LearnerProfileSnapshot) -> LearnerProfile:
+def snapshot_to_profile(
+    snapshot: LearnerProfileSnapshot,
+    *,
+    is_calibrated: bool = False,
+) -> LearnerProfile:
     """Map a `LearnerProfileSnapshot` into the prompt-renderer's profile shape.
 
     The runtime prompt builder and the agent-eval orchestrator both call
     this so the rendered system prompt is identical whether the snapshot
     came from the DB or an in-memory accumulator.
+
+    Spec 049: ``is_calibrated`` is now derived from the existence of a
+    ``band_history`` row with ``reason='placement'`` (see
+    :func:`is_calibrated_async`), not from ``sessions_completed > 0``. A
+    completed session that produced no log_turn calls — pathological but
+    possible — must not flip ``is_calibrated``. The eval-accumulator path
+    has no DB and passes ``False``.
     """
     level = _BAND_MIDPOINT.get(snapshot.band, 0.5)
     return LearnerProfile(
         production_level=level,
         L1_reliance=snapshot.l1_reliance,
         speech_fluency=snapshot.speech_fluency,
-        is_calibrated=snapshot.sessions_completed > 0,
+        is_calibrated=is_calibrated,
         sessions_completed=snapshot.sessions_completed,
         vocab_strengths=list(snapshot.vocab_strengths),
         error_patterns=list(snapshot.error_patterns),
     )
+
+
+_IS_CALIBRATED_SQL = (
+    "SELECT EXISTS(SELECT 1 FROM band_history WHERE reason='placement')"
+)
+_CURRENT_BAND_SQL = "SELECT band FROM learner_profile WHERE id = 1"
+
+
+async def is_calibrated_async(
+    pool_or_conn: asyncpg.Pool | asyncpg.Connection,
+) -> bool:
+    """True iff a ``band_history`` row with ``reason='placement'`` exists.
+
+    Accepts a pool (acquires a connection) or an already-acquired
+    connection so callers in a transaction can avoid a redundant acquire.
+    """
+    if isinstance(pool_or_conn, asyncpg.Pool):
+        async with pool_or_conn.acquire() as conn:
+            result = await conn.fetchval(_IS_CALIBRATED_SQL)
+    else:
+        result = await pool_or_conn.fetchval(_IS_CALIBRATED_SQL)
+    return bool(result)
+
+
+async def current_band(
+    pool_or_conn: asyncpg.Pool | asyncpg.Connection,
+) -> CEFRBand:
+    """Read the live band from ``learner_profile``.
+
+    Returns ``"A2"`` if the profile row is missing or carries an
+    unexpected value — same neutral posture as :meth:`LearnerProfileRepo.get`.
+    """
+    if isinstance(pool_or_conn, asyncpg.Pool):
+        async with pool_or_conn.acquire() as conn:
+            band = await conn.fetchval(_CURRENT_BAND_SQL)
+    else:
+        band = await pool_or_conn.fetchval(_CURRENT_BAND_SQL)
+    return band if is_valid_cefr_band(band) else "A2"
 
 
 class LearnerProfileRepo:

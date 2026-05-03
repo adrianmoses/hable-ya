@@ -38,6 +38,7 @@ def test_schema_validates_well_formed_args() -> None:
         "errors": [{"type": "ser_estar", "produced": "es", "target": "soy"}],
         "fluency_signal": "moderate",
         "L1_used": False,
+        "cefr_band": "A2",
     }
     assert list(validator.iter_errors(payload)) == []
 
@@ -50,6 +51,7 @@ def test_schema_accepts_empty_errors_list() -> None:
         "errors": [],
         "fluency_signal": "strong",
         "L1_used": False,
+        "cefr_band": "B2",
     }
     assert list(validator.iter_errors(payload)) == []
 
@@ -62,6 +64,7 @@ def test_schema_accepts_empty_errors_list() -> None:
                 "errors": [],
                 "fluency_signal": "moderate",
                 "L1_used": False,
+                "cefr_band": "A2",
             },
             "missing learner_utterance",
         ),
@@ -71,6 +74,7 @@ def test_schema_accepts_empty_errors_list() -> None:
                 "errors": "not-a-list",
                 "fluency_signal": "moderate",
                 "L1_used": False,
+                "cefr_band": "A2",
             },
             "errors not a list",
         ),
@@ -80,6 +84,7 @@ def test_schema_accepts_empty_errors_list() -> None:
                 "errors": [],
                 "fluency_signal": "ok",
                 "L1_used": False,
+                "cefr_band": "A2",
             },
             "fluency_signal not in enum",
         ),
@@ -89,8 +94,28 @@ def test_schema_accepts_empty_errors_list() -> None:
                 "errors": [],
                 "fluency_signal": "moderate",
                 "L1_used": "yes",
+                "cefr_band": "A2",
             },
             "L1_used not bool",
+        ),
+        (
+            {
+                "learner_utterance": "Hola.",
+                "errors": [],
+                "fluency_signal": "moderate",
+                "L1_used": False,
+            },
+            "missing cefr_band",
+        ),
+        (
+            {
+                "learner_utterance": "Hola.",
+                "errors": [],
+                "fluency_signal": "moderate",
+                "L1_used": False,
+                "cefr_band": "intermediate",
+            },
+            "cefr_band not in enum",
         ),
     ],
 )

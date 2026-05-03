@@ -115,7 +115,10 @@ def test_snapshot_to_profile_composes_with_render_system_prompt() -> None:
         error_patterns=["ser_estar"],
         vocab_strengths=["caminar", "ciudad"],
     )
-    profile = snapshot_to_profile(snapshot)
+    # Spec 049: is_calibrated is now an explicit parameter (sourced from
+    # band_history in the runtime). Eval-accumulator path defaults to False;
+    # pass True here to exercise the calibrated rendering path.
+    profile = snapshot_to_profile(snapshot, is_calibrated=True)
     assert isinstance(profile, LearnerProfile)
     assert profile.is_calibrated is True
     assert profile.error_patterns == ["ser_estar"]

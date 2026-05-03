@@ -41,12 +41,16 @@ async def test_observations_endpoint_returns_missing_and_ingest_failed(
     sink = TurnObservationSink(tmp_path / "turns.jsonl")
     sink.missing = 2
     sink.ingest_failed = 1
+    sink.band_missing = 3
+    sink.leveling_failed = 1
     app = _app_with_state(pool=None, sink=sink)
     r = await _get(app, "/dev/observations")
     assert r.status_code == 200
     body = r.json()
     assert body["missing"] == 2
     assert body["ingest_failed"] == 1
+    assert body["band_missing"] == 3
+    assert body["leveling_failed"] == 1
     assert body["observations"] == []
 
 
@@ -92,6 +96,12 @@ async def test_learner_endpoint_populated_profile(
     assert body["top_vocab"][0]["lemma"] == "comer"
     assert body["top_vocab"][0]["production_count"] == 3
     assert body["recent_theme_domains"] == ["pedir un café"]
+    # Spec 049: new fields are present.
+    assert body["profile"]["is_calibrated"] is False
+    assert body["profile"]["stable_sessions_at_band"] == 0
+    assert body["profile"]["last_band_change_at"] is None
+    assert body["band_history"] == []
+    assert body["recent_turn_bands"] == []
 
 
 async def test_learner_endpoint_returns_503_without_pool(tmp_path: Path) -> None:
@@ -115,3 +125,7 @@ async def test_learner_endpoint_cold_start(
     assert body["top_errors"] == []
     assert body["top_vocab"] == []
     assert body["recent_theme_domains"] == []
+    # Spec 049: fresh DB → uncalibrated, no audit history, no band turns.
+    assert body["profile"]["is_calibrated"] is False
+    assert body["band_history"] == []
+    assert body["recent_turn_bands"] == []
